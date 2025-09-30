@@ -43,61 +43,203 @@ COLORS = {
     'primary': '#0B5FFF',
     'accent1': '#2563EB',
     'accent2': '#1E40AF',
-    'background': '#FFFFFF',
-    'surface': '#F8FAFC',
-    'text': '#1E293B',
-    'text_muted': '#334155',
+    'background': '#FAFAFA',
+    'surface': '#FFFFFF',
+    'text': '#0F172A',
+    'text_muted': '#64748B',
     'success': '#10B981',
     'warning': '#F59E0B',
     'danger': '#EF4444',
-    'border': '#E2E8F0'
+    'border': '#E2E8F0',
+    'chart_green': '#10B981',
+    'chart_red': '#EF4444',
+    'chart_blue': '#3B82F6',
+    'chart_purple': '#8B5CF6',
+    'chart_orange': '#F97316'
 }
 
-# Custom CSS
+# Custom CSS for professional look
 st.markdown(f"""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    * {{
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }}
+    
     .main {{
         background-color: {COLORS['background']};
     }}
+    
+    /* Professional metric cards */
     .stMetric {{
-        background-color: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        background: linear-gradient(135deg, {COLORS['surface']} 0%, #F8FAFC 100%);
+        padding: 24px 20px;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+        border: 1px solid {COLORS['border']};
+        transition: all 0.3s ease;
     }}
+    
+    .stMetric:hover {{
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }}
+    
     .stMetric label {{
         color: {COLORS['text_muted']};
-        font-size: 12px;
+        font-size: 11px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.8px;
+        font-weight: 600;
     }}
-    .stMetric .metric-value {{
-        color: {COLORS['primary']};
+    
+    .stMetric [data-testid="stMetricValue"] {{
+        color: {COLORS['text']};
         font-size: 28px;
         font-weight: 700;
     }}
+    
+    /* Tab styling */
+    .stTabs [data-baseweb="tab-list"] {{
+        gap: 8px;
+        background-color: {COLORS['surface']};
+        padding: 8px;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }}
+    
+    .stTabs [data-baseweb="tab"] {{
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-weight: 500;
+        background-color: transparent;
+        border: none;
+    }}
+    
+    .stTabs [aria-selected="true"] {{
+        background: linear-gradient(135deg, {COLORS['primary']} 0%, {COLORS['accent1']} 100%);
+        color: white !important;
+    }}
+    
+    /* Headers */
     h1 {{
-        color: {COLORS['primary']};
+        color: {COLORS['text']};
+        font-weight: 700;
+        letter-spacing: -0.5px;
     }}
-    .positive {{
-        color: {COLORS['success']};
+    
+    h2, h3 {{
+        color: {COLORS['text']};
+        font-weight: 600;
+        letter-spacing: -0.3px;
     }}
-    .negative {{
-        color: {COLORS['danger']};
+    
+    /* Dataframes */
+    .stDataFrame {{
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }}
+    
+    /* Selectbox and inputs */
+    .stSelectbox, .stNumberInput {{
+        background: {COLORS['surface']};
+        border-radius: 8px;
+    }}
+    
+    /* Buttons */
+    .stButton button {{
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 12px 24px;
+        border: none;
+        background: linear-gradient(135deg, {COLORS['primary']} 0%, {COLORS['accent1']} 100%);
+        color: white;
+        transition: all 0.3s ease;
+    }}
+    
+    .stButton button:hover {{
+        box-shadow: 0 4px 12px rgba(11, 95, 255, 0.3);
+        transform: translateY(-2px);
+    }}
+    
+    /* Cards */
+    .metric-card {{
+        background: {COLORS['surface']};
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        border: 1px solid {COLORS['border']};
+        margin-bottom: 16px;
+    }}
+    
+    .risk-card {{
+        background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%);
+        padding: 20px;
+        border-radius: 12px;
+        border-left: 4px solid {COLORS['primary']};
+        margin-bottom: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+    }}
+    
+    .alert-success {{
+        background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+        border-left: 4px solid {COLORS['success']};
+        padding: 16px;
+        border-radius: 8px;
+        margin: 12px 0;
+    }}
+    
+    .alert-warning {{
+        background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+        border-left: 4px solid {COLORS['warning']};
+        padding: 16px;
+        border-radius: 8px;
+        margin: 12px 0;
+    }}
+    
+    .alert-danger {{
+        background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+        border-left: 4px solid {COLORS['danger']};
+        padding: 16px;
+        border-radius: 8px;
+        margin: 12px 0;
+    }}
+    
+    /* Progress bars */
+    .stProgress > div > div > div {{
+        background: linear-gradient(90deg, {COLORS['primary']} 0%, {COLORS['accent1']} 100%);
     }}
 </style>
 """, unsafe_allow_html=True)
 
-# Plotly template
+# Plotly template - professional styling
 PLOTLY_TEMPLATE = go.layout.Template(
     layout=go.Layout(
         font={'family': 'Inter, sans-serif', 'size': 12, 'color': COLORS['text']},
-        plot_bgcolor=COLORS['background'],
-        paper_bgcolor=COLORS['background'],
-        colorway=[COLORS['primary'], COLORS['accent1'], COLORS['accent2'], '#8B5CF6', '#EC4899', '#F59E0B'],
-        hovermode='closest',
-        xaxis={'gridcolor': COLORS['border'], 'showgrid': True},
-        yaxis={'gridcolor': COLORS['border'], 'showgrid': True}
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        colorway=[COLORS['chart_blue'], COLORS['chart_green'], COLORS['chart_purple'], 
+                 COLORS['chart_orange'], COLORS['primary'], COLORS['danger']],
+        hovermode='x unified',
+        xaxis={
+            'gridcolor': COLORS['border'],
+            'showgrid': True,
+            'zeroline': False,
+            'showline': True,
+            'linewidth': 1,
+            'linecolor': COLORS['border']
+        },
+        yaxis={
+            'gridcolor': COLORS['border'],
+            'showgrid': True,
+            'zeroline': False,
+            'showline': True,
+            'linewidth': 1,
+            'linecolor': COLORS['border']
+        },
+        title={'font': {'size': 16, 'color': COLORS['text'], 'family': 'Inter'}}
     )
 )
 
@@ -198,28 +340,110 @@ def get_basics(symbol: str) -> Dict:
         return {'name': symbol, 'sector': 'Unknown', 'industry': 'Unknown', 'market_cap': 0}
 
 @st.cache_data(ttl=300)  # 5 minute cache
-def get_news(symbols: List[str], limit: int = 50) -> pd.DataFrame:
+def get_news(symbols: List[str], limit: int = 5) -> pd.DataFrame:
     """Get news for portfolio symbols."""
     news_items = []
     
-    for symbol in symbols[:10]:  # Limit to first 10 symbols to avoid rate limits
+    # Only get news for top 10 holdings to avoid rate limits
+    for symbol in symbols[:10]:
         try:
             ticker = yf.Ticker(symbol)
-            news = ticker.news
+            # Use info endpoint which is more reliable
+            news = ticker.news if hasattr(ticker, 'news') else []
             
-            for item in news[:limit]:
+            if news:
+                for item in news[:limit]:
+                    try:
+                        news_items.append({
+                            'symbol': symbol,
+                            'title': item.get('title', ''),
+                            'source': item.get('publisher', 'Unknown'),
+                            'published': datetime.fromtimestamp(item.get('providerPublishTime', 0)),
+                            'link': item.get('link', ''),
+                            'sentiment': _simple_sentiment(item.get('title', ''))
+                        })
+                    except:
+                        continue
+        except Exception as e:
+            continue
+    
+    if not news_items:
+        # Return empty dataframe with correct structure
+        return pd.DataFrame(columns=['symbol', 'title', 'source', 'published', 'link', 'sentiment'])
+    
+    return pd.DataFrame(news_items).sort_values('published', ascending=False).reset_index(drop=True)
+
+@st.cache_data(ttl=300)
+def get_stock_info(symbol: str) -> Dict:
+    """Get detailed stock information."""
+    try:
+        ticker = yf.Ticker(symbol)
+        info = ticker.info
+        
+        return {
+            'name': info.get('longName', symbol),
+            'sector': info.get('sector', 'N/A'),
+            'industry': info.get('industry', 'N/A'),
+            'market_cap': info.get('marketCap', 0),
+            'pe_ratio': info.get('forwardPE', info.get('trailingPE', 0)),
+            'dividend_yield': info.get('dividendYield', 0),
+            'beta': info.get('beta', 0),
+            '52w_high': info.get('fiftyTwoWeekHigh', 0),
+            '52w_low': info.get('fiftyTwoWeekLow', 0),
+            'avg_volume': info.get('averageVolume', 0),
+            'description': info.get('longBusinessSummary', 'No description available')
+        }
+    except:
+        return {
+            'name': symbol,
+            'sector': 'N/A',
+            'industry': 'N/A',
+            'market_cap': 0,
+            'pe_ratio': 0,
+            'dividend_yield': 0,
+            'beta': 0,
+            '52w_high': 0,
+            '52w_low': 0,
+            'avg_volume': 0,
+            'description': 'Information not available'
+        }
+
+@st.cache_data(ttl=300)
+def get_stock_news(symbol: str, limit: int = 10) -> pd.DataFrame:
+    """Get news for a specific stock."""
+    try:
+        ticker = yf.Ticker(symbol)
+        news = ticker.news if hasattr(ticker, 'news') else []
+        
+        news_items = []
+        for item in news[:limit]:
+            try:
                 news_items.append({
-                    'symbol': symbol,
                     'title': item.get('title', ''),
                     'source': item.get('publisher', 'Unknown'),
                     'published': datetime.fromtimestamp(item.get('providerPublishTime', 0)),
                     'link': item.get('link', ''),
                     'sentiment': _simple_sentiment(item.get('title', ''))
                 })
-        except:
-            continue
-    
-    return pd.DataFrame(news_items).sort_values('published', ascending=False).reset_index(drop=True) if news_items else pd.DataFrame()
+            except:
+                continue
+        
+        if not news_items:
+            return pd.DataFrame(columns=['title', 'source', 'published', 'link', 'sentiment'])
+        
+        return pd.DataFrame(news_items).sort_values('published', ascending=False).reset_index(drop=True)
+    except:
+        return pd.DataFrame(columns=['title', 'source', 'published', 'link', 'sentiment'])
+
+@st.cache_data(ttl=300)
+def get_stock_price_history(symbol: str, period: str = '1y') -> pd.DataFrame:
+    """Get price history for a stock."""
+    try:
+        ticker = yf.Ticker(symbol)
+        hist = ticker.history(period=period)
+        return hist
+    except:
+        return pd.DataFrame()
 
 def _simple_sentiment(text: str) -> str:
     """Simple keyword-based sentiment analysis."""
@@ -575,45 +799,104 @@ def main():
     """Main Streamlit app."""
     
     # Header
-    st.title("📊 TKIG Portfolio Dashboard")
-    st.markdown(f"**Benchmarked to VTI** • Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    col_header1, col_header2 = st.columns([3, 1])
+    
+    with col_header1:
+        st.markdown("""
+        <h1 style='margin-bottom: 0;'>📊 TKIG Portfolio Dashboard</h1>
+        <p style='color: #64748B; font-size: 14px; margin-top: 8px;'>
+            <strong>Benchmarked to VTI</strong> • Last Updated: {}</p>
+        """.format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')), unsafe_allow_html=True)
+    
+    with col_header2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🔄 Refresh Data", use_container_width=True, type="primary"):
+            st.cache_data.clear()
+            st.rerun()
     
     # Sidebar
     with st.sidebar:
-        st.header("Settings")
+        st.markdown("## ⚙️ Settings")
         
-        # File upload
-        uploaded_file = st.file_uploader("Upload Portfolio CSV", type=['csv'])
+        st.markdown("---")
+        
+        # File upload with better UI
+        st.markdown("### 📁 Portfolio Data")
+        uploaded_file = st.file_uploader("Upload CSV", type=['csv'], help="Upload a CSV with columns: Symbol, Qty, AvgCost")
         
         if uploaded_file is not None:
             portfolio_df = load_portfolio_from_csv(uploaded_file)
+            st.markdown(f"""
+            <div class="alert-success">
+                ✅ Loaded <strong>{len(portfolio_df)}</strong> positions
+            </div>
+            """, unsafe_allow_html=True)
         else:
             # Use default data
             import io
             portfolio_df = load_portfolio_from_csv(io.StringIO(DEFAULT_PORTFOLIO))
-        
-        st.success(f"✓ Loaded {len(portfolio_df)} positions")
-        
-        # Refresh button
-        if st.button("🔄 Refresh Data", use_container_width=True):
-            st.cache_data.clear()
-            st.rerun()
+            st.markdown(f"""
+            <div style="background: #F1F5F9; padding: 12px; border-radius: 8px; margin: 8px 0;">
+                ℹ️ Using default TKIG portfolio<br>
+                <strong>{len(portfolio_df)}</strong> positions loaded
+            </div>
+            """, unsafe_allow_html=True)
         
         st.markdown("---")
-        st.markdown("### About")
-        st.markdown("Professional portfolio analytics with real-time data from Yahoo Finance.")
-    
-    # Initialize portfolio engine
-    with st.spinner("Loading portfolio data..."):
-        engine = PortfolioEngine(portfolio_df)
+        
+        # Quick stats in sidebar
+        with st.spinner("Loading portfolio data..."):
+            engine = PortfolioEngine(portfolio_df)
+        
+        st.markdown("### 📈 Quick Stats")
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%); padding: 16px; border-radius: 8px; margin: 8px 0;">
+            <div style="margin-bottom: 12px;">
+                <span style="color: #64748B; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Portfolio Value</span><br>
+                <span style="color: #0F172A; font-size: 24px; font-weight: 700;">${engine.total_market_value:,.0f}</span>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <span style="color: #64748B; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Total Return</span><br>
+                <span style="color: {'#10B981' if engine.total_pl >= 0 else '#EF4444'}; font-size: 20px; font-weight: 600;">
+                    {engine.total_pl_pct:+.2f}%
+                </span>
+            </div>
+            <div>
+                <span style="color: #64748B; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Day Change</span><br>
+                <span style="color: {'#10B981' if engine.total_day_pl >= 0 else '#EF4444'}; font-size: 18px; font-weight: 600;">
+                    ${engine.total_day_pl:+,.0f}
+                </span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        st.markdown("### ℹ️ About")
+        st.markdown("""
+        <div style="font-size: 13px; color: #64748B; line-height: 1.6;">
+            Professional portfolio analytics with institutional-grade metrics including VaR, CVaR, risk contribution analysis, and real-time market data.
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        st.markdown("""
+        <div style="text-align: center; padding: 16px; background: linear-gradient(135deg, #0B5FFF 0%, #2563EB 100%); border-radius: 8px; color: white;">
+            <strong>💎 Professional Edition</strong><br>
+            <span style="font-size: 12px; opacity: 0.9;">CFA-Level Analytics</span>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Main tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "📈 Overview",
         "📋 Positions", 
+        "🔍 Individual Holdings",
         "⚖️ Performance vs VTI",
         "🎯 Risk & Analytics",
-        "📰 News & Events"
+        "📰 News & Events",
+        "🔮 What-If Analysis"
     ])
     
     # TAB 1: OVERVIEW
@@ -665,14 +948,36 @@ def main():
             
             # Color code the dataframe
             def color_negative_red(val):
-                color = COLORS['success'] if val > 0 else COLORS['danger']
-                return f'color: {color}'
+                if isinstance(val, (int, float)):
+                    color = COLORS['success'] if val > 0 else COLORS['danger']
+                    return f'color: {color}'
+                return ''
             
             st.dataframe(
                 top_movers.style.applymap(color_negative_red, subset=['DayChangePct', 'DayPL']),
                 hide_index=True,
                 use_container_width=True
             )
+            
+            st.subheader("Largest Holdings")
+            top_holdings = engine.holdings.nlargest(5, 'MarketValue')[['Symbol', 'MarketValue', 'Weight']]
+            
+            holdings_fig = go.Figure(data=[go.Bar(
+                x=top_holdings['Symbol'],
+                y=top_holdings['Weight'],
+                text=top_holdings['Weight'].apply(lambda x: f"{x:.1f}%"),
+                textposition='auto',
+                marker_color=COLORS['accent1']
+            )])
+            holdings_fig.update_layout(
+                title="Top 5 Holdings by Weight",
+                xaxis_title="",
+                yaxis_title="Portfolio Weight (%)",
+                template=PLOTLY_TEMPLATE,
+                height=300,
+                showlegend=False
+            )
+            st.plotly_chart(holdings_fig, use_container_width=True)
         
         with col2:
             st.subheader("Sector Allocation")
@@ -684,18 +989,22 @@ def main():
             )])
             sector_fig.update_layout(template=PLOTLY_TEMPLATE, height=300, showlegend=True)
             st.plotly_chart(sector_fig, use_container_width=True)
-        
-        # Top 10 concentration
-        st.subheader("Top 10 Concentration")
-        top10 = engine.holdings.nlargest(10, 'Weight')[['Symbol', 'Weight']]
-        conc_fig = go.Figure(data=[go.Bar(x=top10['Symbol'], y=top10['Weight'], marker_color=COLORS['primary'])])
-        conc_fig.update_layout(
-            xaxis_title="Symbol",
-            yaxis_title="Weight (%)",
-            template=PLOTLY_TEMPLATE,
-            height=350
-        )
-        st.plotly_chart(conc_fig, use_container_width=True)
+            
+            st.subheader("Performance Distribution")
+            perf_fig = go.Figure(data=[go.Histogram(
+                x=engine.holdings['TotalPLPct'],
+                nbinsx=20,
+                marker_color=COLORS['primary']
+            )])
+            perf_fig.update_layout(
+                title="Distribution of Position Returns",
+                xaxis_title="Total Return (%)",
+                yaxis_title="Number of Positions",
+                template=PLOTLY_TEMPLATE,
+                height=300,
+                showlegend=False
+            )
+            st.plotly_chart(perf_fig, use_container_width=True)
     
     # TAB 2: POSITIONS
     with tab2:
@@ -719,7 +1028,236 @@ def main():
         
         st.dataframe(positions_data, hide_index=True, use_container_width=True, height=600)
     
-    # TAB 3: PERFORMANCE
+    # TAB 3: INDIVIDUAL HOLDINGS
+    with tab3:
+        st.subheader("🔍 Individual Stock Analysis")
+        
+        # Stock selector
+        selected_symbol = st.selectbox(
+            "Select a stock from your portfolio",
+            options=engine.holdings['Symbol'].tolist(),
+            index=0
+        )
+        
+        # Get stock data
+        holding_info = engine.holdings[engine.holdings['Symbol'] == selected_symbol].iloc[0]
+        stock_info = get_stock_info(selected_symbol)
+        
+        # Header with stock name
+        st.markdown(f"## {stock_info['name']} ({selected_symbol})")
+        st.markdown(f"**{stock_info['sector']} • {stock_info['industry']}**")
+        
+        # Key metrics row
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
+        
+        with col1:
+            st.metric("Your Shares", f"{holding_info['Qty']:.0f}")
+        
+        with col2:
+            st.metric("Avg Cost", f"${holding_info['AvgCost']:.2f}")
+        
+        with col3:
+            st.metric("Current Price", f"${holding_info['LastPrice']:.2f}",
+                     f"{holding_info['DayChangePct']:+.2f}%")
+        
+        with col4:
+            st.metric("Market Value", f"${holding_info['MarketValue']:,.0f}")
+        
+        with col5:
+            st.metric("Total P/L", f"${holding_info['TotalPL']:+,.0f}",
+                     f"{holding_info['TotalPLPct']:+.2f}%")
+        
+        with col6:
+            st.metric("Portfolio Weight", f"{holding_info['Weight']:.2f}%")
+        
+        st.markdown("---")
+        
+        # Price chart with timeframe selector
+        col_chart, col_info = st.columns([2, 1])
+        
+        with col_chart:
+            st.subheader("📊 Price Chart")
+            
+            # Timeframe selector
+            timeframe = st.selectbox(
+                "Timeframe",
+                options=['1D', '5D', '1M', '3M', '6M', '1Y', '2Y', '5Y', 'MAX'],
+                index=5,  # Default to 1Y
+                key=f"timeframe_{selected_symbol}"
+            )
+            
+            # Map timeframes to yfinance periods
+            period_map = {
+                '1D': '1d',
+                '5D': '5d',
+                '1M': '1mo',
+                '3M': '3mo',
+                '6M': '6mo',
+                '1Y': '1y',
+                '2Y': '2y',
+                '5Y': '5y',
+                'MAX': 'max'
+            }
+            
+            # Get price history
+            with st.spinner(f"Loading {timeframe} data..."):
+                price_history = get_stock_price_history(selected_symbol, period_map[timeframe])
+            
+            if not price_history.empty:
+                # Create candlestick chart
+                fig = go.Figure()
+                
+                # Add candlestick
+                fig.add_trace(go.Candlestick(
+                    x=price_history.index,
+                    open=price_history['Open'],
+                    high=price_history['High'],
+                    low=price_history['Low'],
+                    close=price_history['Close'],
+                    name='Price'
+                ))
+                
+                # Add volume bars
+                fig.add_trace(go.Bar(
+                    x=price_history.index,
+                    y=price_history['Volume'],
+                    name='Volume',
+                    yaxis='y2',
+                    marker_color=COLORS['text_muted'],
+                    opacity=0.3
+                ))
+                
+                # Add your average cost line
+                fig.add_hline(
+                    y=holding_info['AvgCost'],
+                    line_dash="dash",
+                    line_color=COLORS['warning'],
+                    annotation_text=f"Your Avg Cost: ${holding_info['AvgCost']:.2f}",
+                    annotation_position="right"
+                )
+                
+                # Update layout
+                fig.update_layout(
+                    template=PLOTLY_TEMPLATE,
+                    height=500,
+                    xaxis_title="Date",
+                    yaxis_title="Price ($)",
+                    yaxis2=dict(
+                        title="Volume",
+                        overlaying='y',
+                        side='right',
+                        showgrid=False
+                    ),
+                    hovermode='x unified',
+                    xaxis_rangeslider_visible=False
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Price statistics
+                col_stats1, col_stats2, col_stats3, col_stats4 = st.columns(4)
+                
+                current_price = price_history['Close'].iloc[-1]
+                period_high = price_history['High'].max()
+                period_low = price_history['Low'].min()
+                period_return = ((current_price - price_history['Close'].iloc[0]) / price_history['Close'].iloc[0]) * 100
+                
+                with col_stats1:
+                    st.metric(f"{timeframe} Return", f"{period_return:+.2f}%")
+                
+                with col_stats2:
+                    st.metric(f"{timeframe} High", f"${period_high:.2f}")
+                
+                with col_stats3:
+                    st.metric(f"{timeframe} Low", f"${period_low:.2f}")
+                
+                with col_stats4:
+                    st.metric("Volatility", f"{price_history['Close'].pct_change().std() * 100:.2f}%")
+            
+            else:
+                st.warning(f"No price data available for {selected_symbol}")
+        
+        with col_info:
+            st.subheader("📋 Company Info")
+            
+            # Format market cap
+            if stock_info['market_cap'] > 1e12:
+                market_cap_str = f"${stock_info['market_cap']/1e12:.2f}T"
+            elif stock_info['market_cap'] > 1e9:
+                market_cap_str = f"${stock_info['market_cap']/1e9:.2f}B"
+            elif stock_info['market_cap'] > 1e6:
+                market_cap_str = f"${stock_info['market_cap']/1e6:.2f}M"
+            else:
+                market_cap_str = f"${stock_info['market_cap']:,.0f}"
+            
+            st.markdown(f"""
+            **Market Cap:** {market_cap_str}
+            
+            **P/E Ratio:** {stock_info['pe_ratio']:.2f if stock_info['pe_ratio'] else 'N/A'}
+            
+            **Dividend Yield:** {stock_info['dividend_yield']*100:.2f}% if stock_info['dividend_yield'] else 'N/A'}
+            
+            **Beta:** {stock_info['beta']:.2f if stock_info['beta'] else 'N/A'}
+            
+            **52W High:** ${stock_info['52w_high']:.2f if stock_info['52w_high'] else 'N/A'}
+            
+            **52W Low:** ${stock_info['52w_low']:.2f if stock_info['52w_low'] else 'N/A'}
+            
+            **Avg Volume:** {stock_info['avg_volume']:,} if stock_info['avg_volume'] else 'N/A'}
+            """)
+            
+            # Price vs 52-week range indicator
+            if stock_info['52w_high'] and stock_info['52w_low']:
+                price_range = stock_info['52w_high'] - stock_info['52w_low']
+                price_position = (holding_info['LastPrice'] - stock_info['52w_low']) / price_range if price_range > 0 else 0
+                
+                st.markdown("**52-Week Range Position:**")
+                st.progress(price_position)
+                st.caption(f"{price_position*100:.1f}% from low to high")
+        
+        # Company description
+        st.markdown("---")
+        st.subheader("📖 About the Company")
+        st.write(stock_info['description'])
+        
+        # Stock-specific news
+        st.markdown("---")
+        st.subheader(f"📰 Latest News for {selected_symbol}")
+        
+        with st.spinner("Loading news..."):
+            stock_news = get_stock_news(selected_symbol, limit=10)
+        
+        if not stock_news.empty:
+            for _, row in stock_news.iterrows():
+                sentiment_emoji = {
+                    'Positive': '📈',
+                    'Negative': '📉',
+                    'Neutral': '➡️'
+                }.get(row['sentiment'], '➡️')
+                
+                sentiment_color = {
+                    'Positive': COLORS['success'],
+                    'Negative': COLORS['danger'],
+                    'Neutral': COLORS['text_muted']
+                }.get(row['sentiment'], COLORS['text_muted'])
+                
+                with st.container():
+                    st.markdown(f"""
+                    <div style="padding: 12px; background: white; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid {sentiment_color};">
+                        <div style="margin-bottom: 6px;">
+                            <span style="font-size: 14px;">{sentiment_emoji} <strong style="color: {sentiment_color};">{row['sentiment']}</strong></span>
+                        </div>
+                        <h4 style="margin: 8px 0; font-size: 15px; line-height: 1.3;">{row['title']}</h4>
+                        <p style="color: {COLORS['text_muted']}; font-size: 11px; margin: 0;">
+                            <strong>{row['source']}</strong> • {row['published'].strftime('%b %d, %Y %H:%M')} • 
+                            <a href="{row['link']}" target="_blank" style="color: {COLORS['primary']};">Read more →</a>
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.info(f"No recent news available for {selected_symbol}")
+    
+    # TAB 4: PERFORMANCE
     with tab3:
         st.subheader("Performance vs VTI")
         
@@ -812,78 +1350,380 @@ def main():
                 )
                 st.plotly_chart(attr_fig, use_container_width=True)
     
-    # TAB 4: RISK & ANALYTICS
-    with tab4:
-        st.subheader("Risk & Analytics")
+    # TAB 5: RISK & ANALYTICS
+    with tab5:
+        st.markdown("## 🎯 Risk & Analytics")
+        st.markdown("**Professional risk assessment and portfolio analytics**")
+        st.markdown("---")
         
-        # Anomaly detection
-        st.subheader("🚨 Anomaly Radar")
-        anomalies = engine.detect_anomalies()
+        # Get returns for calculations
+        port_ret, bench_ret = engine.compute_returns()
         
-        if anomalies:
-            anomaly_df = pd.DataFrame(anomalies)
-            st.warning(f"Found {len(anomalies)} anomalies")
-            st.dataframe(anomaly_df, hide_index=True, use_container_width=True)
-        else:
-            st.success("No anomalies detected")
+        # === SECTION 1: RISK METRICS DASHBOARD ===
+        st.subheader("📊 Risk Metrics Dashboard")
         
-        col1, col2 = st.columns(2)
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        # Calculate advanced metrics
+        portfolio_vol = port_ret.std() * np.sqrt(252) * 100
+        var_95 = np.percentile(port_ret, 5) * 100
+        cvar_95 = port_ret[port_ret <= np.percentile(port_ret, 5)].mean() * 100
+        skewness = stats.skew(port_ret)
+        kurtosis = stats.kurtosis(port_ret)
         
         with col1:
-            st.subheader("Portfolio Drawdown")
+            st.metric("Annualized Volatility", f"{portfolio_vol:.2f}%",
+                     help="Standard deviation of returns (annualized)")
+        
+        with col2:
+            st.metric("Value at Risk (95%)", f"{var_95:.2f}%",
+                     help="Maximum expected loss in a day with 95% confidence")
+        
+        with col3:
+            st.metric("CVaR (95%)", f"{cvar_95:.2f}%",
+                     help="Expected loss when VaR threshold is breached")
+        
+        with col4:
+            st.metric("Skewness", f"{skewness:.3f}",
+                     delta="Positive" if skewness > 0 else "Negative",
+                     help="Asymmetry of return distribution")
+        
+        with col5:
+            st.metric("Excess Kurtosis", f"{kurtosis:.3f}",
+                     delta="Fat tails" if kurtosis > 0 else "Thin tails",
+                     help="Tail risk indicator (excess over normal distribution)")
+        
+        st.markdown("---")
+        
+        # === SECTION 2: ANOMALY DETECTION ===
+        col_anomaly, col_stats = st.columns([1, 1])
+        
+        with col_anomaly:
+            st.subheader("🚨 Anomaly Detection")
+            anomalies = engine.detect_anomalies()
+            
+            if anomalies:
+                st.markdown(f"""
+                <div class="alert-warning">
+                    <strong>⚠️ {len(anomalies)} Anomalies Detected</strong><br>
+                    Positions showing unusual price movements or technical signals
+                </div>
+                """, unsafe_allow_html=True)
+                
+                for anom in anomalies:
+                    st.markdown(f"""
+                    <div class="risk-card">
+                        <strong style="color: {COLORS['primary']}; font-size: 15px;">{anom['symbol']}</strong><br>
+                        <span style="color: {COLORS['warning']}; font-weight: 600;">{anom['type']}</span><br>
+                        <span style="color: {COLORS['text_muted']}; font-size: 13px;">{anom['description']}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.markdown("""
+                <div class="alert-success">
+                    <strong>✅ No Anomalies Detected</strong><br>
+                    All positions are trading within normal parameters
+                </div>
+                """, unsafe_allow_html=True)
+        
+        with col_stats:
+            st.subheader("📈 Return Distribution Analysis")
+            
+            # Return distribution histogram
+            hist_fig = go.Figure()
+            hist_fig.add_trace(go.Histogram(
+                x=port_ret * 100,
+                nbinsx=50,
+                name='Returns',
+                marker_color=COLORS['chart_blue'],
+                opacity=0.7
+            ))
+            
+            # Add normal distribution overlay
+            mu = port_ret.mean() * 100
+            sigma = port_ret.std() * 100
+            x_range = np.linspace(port_ret.min() * 100, port_ret.max() * 100, 100)
+            normal_dist = stats.norm.pdf(x_range, mu, sigma) * len(port_ret) * (port_ret.max() - port_ret.min()) * 100 / 50
+            
+            hist_fig.add_trace(go.Scatter(
+                x=x_range,
+                y=normal_dist,
+                mode='lines',
+                name='Normal Distribution',
+                line={'color': COLORS['danger'], 'width': 2, 'dash': 'dash'}
+            ))
+            
+            hist_fig.update_layout(
+                title="Daily Returns Distribution vs Normal",
+                xaxis_title="Daily Return (%)",
+                yaxis_title="Frequency",
+                template=PLOTLY_TEMPLATE,
+                height=350,
+                showlegend=True,
+                barmode='overlay'
+            )
+            st.plotly_chart(hist_fig, use_container_width=True)
+        
+        st.markdown("---")
+        
+        # === SECTION 3: DRAWDOWN ANALYSIS ===
+        col_dd1, col_dd2 = st.columns([2, 1])
+        
+        with col_dd1:
+            st.subheader("📉 Drawdown Analysis")
+            
             port_ts = engine.compute_portfolio_timeseries()
             cummax = port_ts.cummax()
             drawdown = (port_ts - cummax) / cummax * 100
             
+            # Create drawdown figure with underwater plot
             dd_fig = go.Figure()
+            
             dd_fig.add_trace(go.Scatter(
                 x=drawdown.index,
                 y=drawdown.values,
                 fill='tozeroy',
                 name='Drawdown',
-                line={'color': COLORS['danger']}
+                line={'color': COLORS['danger'], 'width': 0},
+                fillcolor=f'rgba(239, 68, 68, 0.3)'
             ))
+            
             dd_fig.update_layout(
+                title="Portfolio Drawdown (Underwater Chart)",
                 xaxis_title="Date",
                 yaxis_title="Drawdown (%)",
                 template=PLOTLY_TEMPLATE,
-                height=400
+                height=400,
+                hovermode='x unified'
             )
+            
             st.plotly_chart(dd_fig, use_container_width=True)
         
-        with col2:
-            st.subheader("Correlation Matrix")
+        with col_dd2:
+            st.subheader("📊 Drawdown Statistics")
+            
+            # Calculate drawdown metrics
+            max_dd = drawdown.min()
+            current_dd = drawdown.iloc[-1]
+            
+            # Find drawdown periods
+            is_drawdown = drawdown < -1  # More than 1% drawdown
+            dd_starts = is_drawdown & ~is_drawdown.shift(1, fill_value=False)
+            dd_ends = ~is_drawdown & is_drawdown.shift(1, fill_value=False)
+            
+            # Count drawdown episodes
+            num_drawdowns = dd_starts.sum()
+            
+            # Average drawdown duration
+            if num_drawdowns > 0:
+                avg_duration = len(drawdown[is_drawdown]) / num_drawdowns
+            else:
+                avg_duration = 0
+            
+            st.metric("Maximum Drawdown", f"{max_dd:.2f}%")
+            st.metric("Current Drawdown", f"{current_dd:.2f}%")
+            st.metric("Drawdown Episodes", f"{num_drawdowns}")
+            st.metric("Avg Duration", f"{avg_duration:.0f} days")
+            
+            # Recovery metrics
+            if current_dd < -1:
+                st.markdown("""
+                <div class="alert-warning">
+                    <strong>⚠️ In Drawdown</strong><br>
+                    Portfolio is {:.2f}% below peak
+                </div>
+                """.format(abs(current_dd)), unsafe_allow_html=True)
+            else:
+                st.markdown("""
+                <div class="alert-success">
+                    <strong>✅ At/Near Peak</strong><br>
+                    Portfolio is at or near all-time high
+                </div>
+                """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # === SECTION 4: CORRELATION & RISK DECOMPOSITION ===
+        col_corr, col_contrib = st.columns([1, 1])
+        
+        with col_corr:
+            st.subheader("🔗 Correlation Matrix")
+            
+            # Calculate correlations
             returns = engine.prices[engine.symbols].pct_change().dropna()
             corr_matrix = returns.corr()
             
+            # Create enhanced heatmap
             heatmap_fig = go.Figure(data=go.Heatmap(
                 z=corr_matrix.values,
                 x=corr_matrix.columns,
                 y=corr_matrix.index,
-                colorscale='RdBu',
+                colorscale=[
+                    [0, COLORS['danger']],
+                    [0.5, '#FFFFFF'],
+                    [1, COLORS['chart_green']]
+                ],
                 zmid=0,
+                zmin=-1,
+                zmax=1,
                 text=corr_matrix.values,
                 texttemplate='%{text:.2f}',
-                textfont={"size": 8}
+                textfont={"size": 8},
+                colorbar=dict(title="Correlation")
             ))
+            
             heatmap_fig.update_layout(
+                title="Asset Correlation Matrix",
                 template=PLOTLY_TEMPLATE,
-                height=400
+                height=500,
+                xaxis={'side': 'bottom'},
+                yaxis={'autorange': 'reversed'}
             )
+            
             st.plotly_chart(heatmap_fig, use_container_width=True)
+            
+            # Correlation insights
+            avg_corr = corr_matrix.values[np.triu_indices_from(corr_matrix.values, k=1)].mean()
+            st.info(f"**Average Correlation:** {avg_corr:.3f}")
+            
+            if avg_corr > 0.7:
+                st.warning("⚠️ High average correlation - portfolio may lack diversification")
+            elif avg_corr > 0.4:
+                st.success("✅ Moderate correlation - good diversification balance")
+            else:
+                st.success("✅ Low correlation - excellent diversification")
+        
+        with col_contrib:
+            st.subheader("⚖️ Risk Contribution Analysis")
+            
+            # Calculate marginal risk contribution
+            weights = engine.holdings.set_index('Symbol')['Weight'].to_dict()
+            weight_array = np.array([weights.get(s, 0)/100 for s in engine.symbols if s in returns.columns])
+            
+            cov_matrix = returns[engine.symbols].cov() * 252  # Annualized
+            
+            # Portfolio variance
+            port_variance = np.dot(weight_array, np.dot(cov_matrix.values, weight_array))
+            port_vol_calc = np.sqrt(port_variance)
+            
+            # Marginal risk contribution
+            marginal_contrib = np.dot(cov_matrix.values, weight_array) / port_vol_calc
+            risk_contrib = weight_array * marginal_contrib
+            risk_contrib_pct = (risk_contrib / risk_contrib.sum()) * 100
+            
+            # Create dataframe
+            risk_df = pd.DataFrame({
+                'Symbol': [s for s in engine.symbols if s in returns.columns],
+                'Weight (%)': weight_array * 100,
+                'Risk Contrib (%)': risk_contrib_pct
+            }).sort_values('Risk Contrib (%)', ascending=False)
+            
+            # Bar chart
+            risk_contrib_fig = go.Figure()
+            
+            risk_contrib_fig.add_trace(go.Bar(
+                x=risk_df['Symbol'].head(10),
+                y=risk_df['Risk Contrib (%)'].head(10),
+                name='Risk Contribution',
+                marker_color=COLORS['chart_purple'],
+                text=risk_df['Risk Contrib (%)'].head(10).apply(lambda x: f'{x:.1f}%'),
+                textposition='outside'
+            ))
+            
+            risk_contrib_fig.add_trace(go.Scatter(
+                x=risk_df['Symbol'].head(10),
+                y=risk_df['Weight (%)'].head(10),
+                name='Portfolio Weight',
+                mode='lines+markers',
+                line={'color': COLORS['warning'], 'width': 2, 'dash': 'dash'},
+                yaxis='y2'
+            ))
+            
+            risk_contrib_fig.update_layout(
+                title="Top 10 Risk Contributors",
+                xaxis_title="Symbol",
+                yaxis_title="Risk Contribution (%)",
+                yaxis2=dict(
+                    title="Portfolio Weight (%)",
+                    overlaying='y',
+                    side='right'
+                ),
+                template=PLOTLY_TEMPLATE,
+                height=450,
+                showlegend=True,
+                hovermode='x unified'
+            )
+            
+            st.plotly_chart(risk_contrib_fig, use_container_width=True)
+            
+            # Risk concentration alert
+            top_risk_contrib = risk_df['Risk Contrib (%)'].head(5).sum()
+            if top_risk_contrib > 50:
+                st.warning(f"⚠️ Top 5 positions contribute {top_risk_contrib:.1f}% of portfolio risk")
+            else:
+                st.success(f"✅ Risk well-distributed: Top 5 contribute {top_risk_contrib:.1f}% of risk")
+        
+        st.markdown("---")
+        
+        # === SECTION 5: ROLLING METRICS ===
+        st.subheader("📈 Rolling Risk Metrics (90-Day Window)")
+        
+        # Calculate rolling metrics
+        rolling_vol = port_ret.rolling(90).std() * np.sqrt(252) * 100
+        rolling_sharpe = (port_ret.rolling(90).mean() * 252) / (port_ret.rolling(90).std() * np.sqrt(252))
+        
+        rolling_fig = make_subplots(
+            rows=2, cols=1,
+            subplot_titles=('Rolling 90-Day Volatility', 'Rolling 90-Day Sharpe Ratio'),
+            vertical_spacing=0.12
+        )
+        
+        rolling_fig.add_trace(
+            go.Scatter(x=rolling_vol.index, y=rolling_vol.values, name='Volatility',
+                      fill='tozeroy', line={'color': COLORS['chart_purple']}),
+            row=1, col=1
+        )
+        
+        rolling_fig.add_trace(
+            go.Scatter(x=rolling_sharpe.index, y=rolling_sharpe.values, name='Sharpe Ratio',
+                      line={'color': COLORS['chart_blue'], 'width': 2}),
+            row=2, col=1
+        )
+        
+        rolling_fig.update_xaxes(title_text="Date", row=2, col=1)
+        rolling_fig.update_yaxes(title_text="Volatility (%)", row=1, col=1)
+        rolling_fig.update_yaxes(title_text="Sharpe Ratio", row=2, col=1)
+        
+        rolling_fig.update_layout(
+            template=PLOTLY_TEMPLATE,
+            height=600,
+            showlegend=False,
+            hovermode='x unified'
+        )
+        
+        st.plotly_chart(rolling_fig, use_container_width=True)
     
-    # TAB 5: NEWS & EVENTS
-    with tab5:
+    # TAB 6: NEWS & EVENTS
+    with tab6:
         st.subheader("News & Events")
         
         col1, col2 = st.columns([2, 1])
         
         with col1:
-            st.subheader("📰 News Feed")
-            news_df = get_news(engine.symbols, limit=10)
+            st.subheader("📰 Latest News")
+            
+            # Add loading indicator
+            with st.spinner("Loading news..."):
+                news_df = get_news(engine.symbols, limit=5)
             
             if not news_df.empty:
-                for _, row in news_df.head(10).iterrows():
+                for _, row in news_df.head(15).iterrows():
+                    sentiment_emoji = {
+                        'Positive': '📈',
+                        'Negative': '📉',
+                        'Neutral': '➡️'
+                    }.get(row['sentiment'], '➡️')
+                    
                     sentiment_color = {
                         'Positive': COLORS['success'],
                         'Negative': COLORS['danger'],
@@ -892,20 +1732,175 @@ def main():
                     
                     with st.container():
                         st.markdown(f"""
-                        <div style="padding: 15px; background: white; border-radius: 8px; margin-bottom: 10px; border: 1px solid {COLORS['border']};">
-                            <span style="background: {COLORS['primary']}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-right: 8px;">{row['symbol']}</span>
-                            <span style="color: {sentiment_color}; font-weight: bold;">{row['sentiment']}</span>
-                            <h4 style="margin-top: 10px; margin-bottom: 5px;">{row['title']}</h4>
-                            <p style="color: {COLORS['text_muted']}; font-size: 12px;">{row['source']} • {row['published'].strftime('%Y-%m-%d %H:%M')} • <a href="{row['link']}" target="_blank">Read more →</a></p>
+                        <div style="padding: 15px; background: white; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid {sentiment_color};">
+                            <div style="margin-bottom: 8px;">
+                                <span style="background: {COLORS['primary']}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; margin-right: 8px; font-weight: bold;">{row['symbol']}</span>
+                                <span style="font-size: 14px;">{sentiment_emoji} <strong style="color: {sentiment_color};">{row['sentiment']}</strong></span>
+                            </div>
+                            <h4 style="margin: 10px 0 8px 0; font-size: 16px; line-height: 1.4;">{row['title']}</h4>
+                            <p style="color: {COLORS['text_muted']}; font-size: 12px; margin: 0;">
+                                <strong>{row['source']}</strong> • {row['published'].strftime('%b %d, %Y %H:%M')} • 
+                                <a href="{row['link']}" target="_blank" style="color: {COLORS['primary']};">Read more →</a>
+                            </p>
                         </div>
                         """, unsafe_allow_html=True)
             else:
-                st.info("No news available")
+                st.info("📭 No recent news available for your holdings. News data may be temporarily unavailable from Yahoo Finance.")
+                st.markdown("**Note:** Yahoo Finance news API has rate limits. Try refreshing in a few minutes.")
         
         with col2:
-            st.subheader("📅 Upcoming Earnings")
-            # Note: earnings calendar requires more API calls, simplified for now
-            st.info("Earnings calendar feature coming soon")
+            st.subheader("📊 Portfolio Stats")
+            
+            # Quick stats
+            top_gainer = engine.holdings.nlargest(1, 'DayChangePct').iloc[0]
+            top_loser = engine.holdings.nsmallest(1, 'DayChangePct').iloc[0]
+            
+            st.metric("🔥 Top Gainer Today", 
+                     top_gainer['Symbol'],
+                     f"{top_gainer['DayChangePct']:.2f}%")
+            
+            st.metric("❄️ Top Loser Today", 
+                     top_loser['Symbol'],
+                     f"{top_loser['DayChangePct']:.2f}%")
+            
+            st.markdown("---")
+            
+            # Sector breakdown
+            st.subheader("Sector Breakdown")
+            for sector, weight in engine.sector_allocation.head(5).items():
+                st.write(f"**{sector}:** {weight:.1f}%")
+                st.progress(weight / 100)
+    
+    # TAB 7: WHAT-IF ANALYSIS
+    with tab7:
+        st.subheader("🔮 What-If Analysis & Portfolio Optimizer")
+        
+        st.markdown("""
+        Simulate portfolio changes and see the impact on your returns, risk, and allocation.
+        """)
+        
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.subheader("💰 Add Cash / New Position")
+            
+            cash_to_add = st.number_input("Cash to Invest ($)", min_value=0, value=10000, step=1000)
+            
+            new_symbol = st.text_input("Ticker Symbol (optional)", value="", placeholder="e.g., NVDA")
+            
+            if new_symbol:
+                new_symbol = new_symbol.upper().strip()
+                try:
+                    quote = get_latest_quote(new_symbol)
+                    if quote['price']:
+                        shares_to_buy = int(cash_to_add / quote['price'])
+                        st.info(f"💡 You can buy **{shares_to_buy} shares** of {new_symbol} at ${quote['price']:.2f}")
+                        
+                        if st.button("Simulate Purchase"):
+                            # Create new portfolio with added position
+                            new_row = pd.DataFrame([{
+                                'Symbol': new_symbol,
+                                'Qty': shares_to_buy,
+                                'AvgCost': quote['price'],
+                                'CostBasis': cash_to_add
+                            }])
+                            
+                            simulated_portfolio = pd.concat([portfolio_df, new_row], ignore_index=True)
+                            sim_engine = PortfolioEngine(simulated_portfolio)
+                            
+                            st.success(f"✅ Simulation Complete!")
+                            
+                            # Show comparison
+                            col_a, col_b = st.columns(2)
+                            with col_a:
+                                st.metric("Current Value", f"${engine.total_market_value:,.0f}")
+                                st.metric("Current Positions", len(engine.holdings))
+                            with col_b:
+                                st.metric("New Value", f"${sim_engine.total_market_value:,.0f}",
+                                         f"+${sim_engine.total_market_value - engine.total_market_value:,.0f}")
+                                st.metric("New Positions", len(sim_engine.holdings))
+                    else:
+                        st.error(f"Could not fetch price for {new_symbol}")
+                except:
+                    st.error(f"Invalid ticker symbol: {new_symbol}")
+        
+        with col2:
+            st.subheader("📉 Sell Position")
+            
+            symbol_to_sell = st.selectbox("Select Position to Sell", engine.holdings['Symbol'].tolist())
+            
+            current_holding = engine.holdings[engine.holdings['Symbol'] == symbol_to_sell].iloc[0]
+            
+            st.write(f"**Current Holdings:** {current_holding['Qty']:.0f} shares")
+            st.write(f"**Market Value:** ${current_holding['MarketValue']:,.2f}")
+            st.write(f"**Unrealized P/L:** ${current_holding['TotalPL']:+,.2f} ({current_holding['TotalPLPct']:+.2f}%)")
+            
+            shares_to_sell = st.slider("Shares to Sell", 0, int(current_holding['Qty']), int(current_holding['Qty']))
+            
+            if shares_to_sell > 0:
+                proceeds = shares_to_sell * current_holding['LastPrice']
+                realized_pl = (current_holding['LastPrice'] - current_holding['AvgCost']) * shares_to_sell
+                
+                st.info(f"💵 **Proceeds:** ${proceeds:,.2f}")
+                st.info(f"📊 **Realized P/L:** ${realized_pl:+,.2f}")
+                
+                if st.button("Simulate Sale"):
+                    # Create new portfolio with reduced position
+                    simulated_portfolio = portfolio_df.copy()
+                    mask = simulated_portfolio['Symbol'] == symbol_to_sell
+                    
+                    new_qty = simulated_portfolio.loc[mask, 'Qty'].values[0] - shares_to_sell
+                    
+                    if new_qty > 0:
+                        simulated_portfolio.loc[mask, 'Qty'] = new_qty
+                        simulated_portfolio.loc[mask, 'CostBasis'] = new_qty * current_holding['AvgCost']
+                    else:
+                        simulated_portfolio = simulated_portfolio[~mask]
+                    
+                    sim_engine = PortfolioEngine(simulated_portfolio)
+                    
+                    st.success(f"✅ Simulation Complete!")
+                    
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        st.metric("Current Weight", f"{current_holding['Weight']:.2f}%")
+                    with col_b:
+                        if symbol_to_sell in sim_engine.holdings['Symbol'].values:
+                            new_weight = sim_engine.holdings[sim_engine.holdings['Symbol'] == symbol_to_sell]['Weight'].values[0]
+                            st.metric("New Weight", f"{new_weight:.2f}%", f"{new_weight - current_holding['Weight']:.2f}%")
+                        else:
+                            st.metric("New Weight", "0%", "-100%")
+        
+        st.markdown("---")
+        
+        # Portfolio rebalancing suggestions
+        st.subheader("⚖️ Rebalancing Suggestions")
+        
+        # Find overweight positions (>10% of portfolio)
+        overweight = engine.holdings[engine.holdings['Weight'] > 10]
+        
+        if not overweight.empty:
+            st.warning(f"⚠️ **{len(overweight)} positions** are overweight (>10% of portfolio)")
+            
+            for _, row in overweight.iterrows():
+                excess_weight = row['Weight'] - 10
+                excess_value = (excess_weight / 100) * engine.total_market_value
+                
+                st.write(f"**{row['Symbol']}:** {row['Weight']:.2f}% (Target: 10%)")
+                st.write(f"   → Consider reducing by ${excess_value:,.0f} ({excess_weight:.2f}%)")
+        else:
+            st.success("✅ No positions are overweight. Portfolio is well-balanced!")
+        
+        # Sector concentration
+        st.subheader("🏢 Sector Concentration Check")
+        overweight_sectors = engine.sector_allocation[engine.sector_allocation > 25]
+        
+        if not overweight_sectors.empty:
+            st.warning(f"⚠️ **{len(overweight_sectors)} sectors** are overweight (>25%)")
+            for sector, weight in overweight_sectors.items():
+                st.write(f"**{sector}:** {weight:.2f}% (Target: <25%)")
+        else:
+            st.success("✅ Sector allocation is well-diversified!")
 
 if __name__ == "__main__":
     main()
