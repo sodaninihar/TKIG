@@ -1221,20 +1221,28 @@ def main():
             else:
                 market_cap_str = f"${stock_info['market_cap']:,.0f}"
             
+            # Format metrics properly
+            pe_ratio_str = f"{stock_info['pe_ratio']:.2f}" if stock_info['pe_ratio'] else 'N/A'
+            div_yield_str = f"{stock_info['dividend_yield']*100:.2f}%" if stock_info['dividend_yield'] else 'N/A'
+            beta_str = f"{stock_info['beta']:.2f}" if stock_info['beta'] else 'N/A'
+            high_52w_str = f"${stock_info['52w_high']:.2f}" if stock_info['52w_high'] else 'N/A'
+            low_52w_str = f"${stock_info['52w_low']:.2f}" if stock_info['52w_low'] else 'N/A'
+            avg_vol_str = f"{stock_info['avg_volume']:,}" if stock_info['avg_volume'] else 'N/A'
+            
             st.markdown(f"""
             **Market Cap:** {market_cap_str}
             
-            **P/E Ratio:** {stock_info['pe_ratio']:.2f if stock_info['pe_ratio'] else 'N/A'}
+            **P/E Ratio:** {pe_ratio_str}
             
-            **Dividend Yield:** {stock_info['dividend_yield']*100:.2f if stock_info['dividend_yield'] else 0:.2f}%
+            **Dividend Yield:** {div_yield_str}
             
-            **Beta:** {stock_info['beta']:.2f if stock_info['beta'] else 'N/A'}
+            **Beta:** {beta_str}
             
-            **52W High:** ${stock_info['52w_high']:.2f if stock_info['52w_high'] else 0}
+            **52W High:** {high_52w_str}
             
-            **52W Low:** ${stock_info['52w_low']:.2f if stock_info['52w_low'] else 0}
+            **52W Low:** {low_52w_str}
             
-            **Avg Volume:** {stock_info['avg_volume']:,}
+            **Avg Volume:** {avg_vol_str}
             """)
             
             # Price vs 52-week range indicator
