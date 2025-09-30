@@ -901,6 +901,37 @@ def main():
     
     # TAB 1: OVERVIEW
     with tab1:
+        # Executive Summary Banner
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #0B5FFF 0%, #2563EB 100%); padding: 24px; border-radius: 12px; margin-bottom: 24px; color: white;">
+            <h2 style="color: white; margin: 0 0 12px 0;">Executive Summary</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <div>
+                    <div style="font-size: 12px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Portfolio Health</div>
+                    <div style="font-size: 20px; font-weight: 700; margin-top: 4px;">
+                        {} {}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 12px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Risk Level</div>
+                    <div style="font-size: 20px; font-weight: 700; margin-top: 4px;">
+                        {}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 12px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Diversification</div>
+                    <div style="font-size: 20px; font-weight: 700; margin-top: 4px;">
+                        {}
+                    </div>
+                </div>
+            </div>
+        </div>
+        """.format(
+            "Excellent ✅" if engine.total_pl_pct > 10 else "Good 👍" if engine.total_pl_pct > 0 else "Review ⚠️",
+            f"(+{engine.total_pl_pct:.1f}%)" if engine.total_pl_pct >= 0 else f"({engine.total_pl_pct:.1f}%)",
+            "Moderate 🟡" if len(engine.holdings) >= 20 else "High 🔴" if len(engine.holdings) < 10 else "Low 🟢",
+            "Excellent ✅" if len(engine.sector_allocation) >= 6 else "Good 👍" if len(engine.sector_allocation) >= 4 else "Poor ⚠️"
+        ), unsafe_allow_html=True)
         # KPI Metrics
         col1, col2, col3, col4, col5 = st.columns(5)
         
@@ -1195,15 +1226,15 @@ def main():
             
             **P/E Ratio:** {stock_info['pe_ratio']:.2f if stock_info['pe_ratio'] else 'N/A'}
             
-            **Dividend Yield:** {stock_info['dividend_yield']*100:.2f}% if stock_info['dividend_yield'] else 'N/A'}
+            **Dividend Yield:** {stock_info['dividend_yield']*100:.2f if stock_info['dividend_yield'] else 0:.2f}%
             
             **Beta:** {stock_info['beta']:.2f if stock_info['beta'] else 'N/A'}
             
-            **52W High:** ${stock_info['52w_high']:.2f if stock_info['52w_high'] else 'N/A'}
+            **52W High:** ${stock_info['52w_high']:.2f if stock_info['52w_high'] else 0}
             
-            **52W Low:** ${stock_info['52w_low']:.2f if stock_info['52w_low'] else 'N/A'}
+            **52W Low:** ${stock_info['52w_low']:.2f if stock_info['52w_low'] else 0}
             
-            **Avg Volume:** {stock_info['avg_volume']:,} if stock_info['avg_volume'] else 'N/A'}
+            **Avg Volume:** {stock_info['avg_volume']:,}
             """)
             
             # Price vs 52-week range indicator
