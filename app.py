@@ -1033,6 +1033,375 @@ def main():
     # TAB 1: OVERVIEW
     with tab1:
         # Executive Summary Banner
+        perf_status = "Excellent" if engine.total_pl_pct > 10 else "Good" if engine.total_pl_pct > 0 else "Needs Attention"
+        risk_level = "Low" if len(engine.holdings) >= 20 else "Moderate" if len(engine.holdings) >= 10 else "High"
+        div_status = "Excellent" if len(engine.sector_allocation) >= 6 else "Good" if len(engine.sector_allocation) >= 4 else "Poor"
+        
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #0B5FFF 0%, #2563EB 100%); padding: 28px; border-radius: 12px; margin-bottom: 24px; color: white;">
+            <h2 style="color: white; margin: 0 0 16px 0; font-size: 24px;">Portfolio Health Dashboard</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">
+                <div style="background: rgba(255,255,255,0.15); padding: 16px; border-radius: 8px;">
+                    <div style="font-size: 11px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Performance</div>
+                    <div style="font-size: 22px; font-weight: 700;">{perf_status}</div>
+                    <div style="font-size: 16px; margin-top: 4px;">{engine.total_pl_pct:+.2f}% Total Return</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.15); padding: 16px; border-radius: 8px;">
+                    <div style="font-size: 11px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Concentration Risk</div>
+                    <div style="font-size: 22px; font-weight: 700;">{risk_level}</div>
+                    <div style="font-size: 16px; margin-top: 4px;">{len(engine.holdings)} Positions</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.15); padding: 16px; border-radius: 8px;">
+                    <div style="font-size: 11px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Diversification</div>
+                    <div style="font-size: 22px; font-weight: 700;">{div_status}</div>
+                    <div style="font-size: 16px; margin-top: 4px;">{len(engine.sector_allocation)} Sectors</div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # KPI Metrics
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        with col1:
+            st.metric("Account Value", f"${engine.total_market_value:,.0f}", 
+                     help="Total market value of all positions")
+        
+        with col2:
+            st.metric("Cost Basis", f"${engine.total_cost_basis:,.0f}",
+                     help="Total amount invested")
+        
+        with col3:
+            st.metric("Unrealized P/L", f"${engine.total_pl:+,.0f}",
+                     f"{engine.total_pl_pct:+.2f}%",
+                     help="Total profit/loss")
+        
+        with col4:
+            st.metric("Day P/L", f"${engine.total_day_pl:+,.0f}",
+                     f"{engine.total_day_pl_pct:+.2f}%",
+                     help="Today's change")
+        
+        with col5:
+            st.metric("# Positions", len(engine.holdings),
+                     help="Number of individual holdings")
+        
+        st.markdown("---")
+        
+        # === MAIN SECTION: SECTOR DEVIATION FROM SPY ===
+        st.markdown("## Sector Analysis vs SPY")
+        st.markdown("**Active sector bets relative to S&P 500 benchmark**")
+        
+        # Get SPY allocation
+        spy_allocation = get_spy_sector_allocation()
+        
+        # Prepare comparison data
+        all_sectors = set(list(engine.sector_allocation.index) + list(spy_allocation.keys()))
+        
+        comparison_data = []
+        for sector in all_sectors:
+            if sector == 'Unknown':
+                continue
+            portfolio_weight = engine.sector_allocation.get(sector, 0)
+            spy_weight = spy_allocation.get(sector, 0)
+            difference = portfolio_weight - spy_weight
+            abs_difference = abs(difference)
+            
+            comparison_data.append({
+                'Sector': sector,
+                'Portfolio': portfolio_weight,
+                'SPY': spy_weight,
+                'Active Weight': difference,
+                'Abs Deviation': abs_difference
+            })
+        
+        comparison_df = pd.DataFrame(comparison_data).sort_values('Active Weight', ascending=False)
+        
+        # Create waterfall/deviation chart
+        fig_deviation = go.Figure()
+        
+        colors = [COLORS['danger'] if x > 0 else COLORS['chart_blue'] for x in comparison_df['Active Weight']]
+        
+        fig_deviation.add_trace(go.Bar(
+            x=comparison_df['Sector'],
+            y=comparison_df['Active Weight'],
+            marker_color=colors,
+            text=comparison_df['Active Weight'].apply(lambda x: f"{x:+.1f}%"),
+            textposition='outside',
+            hovertemplate='<b>%{x}</b><br>Active Weight: %{y:+.2f}%<br>Portfolio: %{customdata[0]:.1f}%<br>SPY: %{customdata[1]:.1f}%<extra></extra>',
+            customdata=comparison_df[['Portfolio', 'SPY']].values
+        ))
+        
+        # Add zero line
+        fig_deviation.add_hline(y=0, line_dash="dash", line_color=COLORS['text_muted'], line_width=2)
+        
+        fig_deviation.update_layout(
+            title="Active Sector Weights (Portfolio vs SPY)",
+            xaxis_title="",
+            yaxis_title="Active Weight (%)",
+            template=PLOTLY_TEMPLATE,
+            height=450,
+            showlegend=False,
+            annotations=[
+                dict(
+                    x=0.02, y=0.98,
+                    xref='paper', yref='paper',
+                    text='<b>Red = Overweight</b><br><b>Blue = Underweight</b>',
+                    showarrow=False,
+                    bgcolor='rgba(255,255,255,0.9)',
+                    bordercolor=COLORS['border'],
+                    borderwidth=1,
+                    borderpad=8,
+                    font=dict(size=11)
+                )
+            ]
+        )
+        
+        st.plotly_chart(fig_deviation, use_container_width=True)
+        
+        # === SECTOR ANALYSIS METRICS ===
+        col_metrics1, col_metrics2, col_metrics3, col_metrics4 = st.columns(4)
+        
+        # Calculate active share (sum of absolute deviations / 2)
+        active_share = comparison_df['Abs Deviation'].sum() / 2
+        
+        # Tracking error contribution from sector bets
+        overweight_risk = comparison_df[comparison_df['Active Weight'] > 5]['Active Weight'].sum()
+        underweight_risk = abs(comparison_df[comparison_df['Active Weight'] < -5]['Active Weight'].sum())
+        
+        # Number of significant bets
+        sig_overweight = len(comparison_df[comparison_df['Active Weight'] > 5])
+        sig_underweight = len(comparison_df[comparison_df['Active Weight'] < -5])
+        
+        with col_metrics1:
+            st.metric("Active Share", f"{active_share:.1f}%",
+                     help="Degree of differentiation from SPY (sum of absolute deviations / 2)")
+        
+        with col_metrics2:
+            st.metric("Overweight Risk", f"{overweight_risk:.1f}%",
+                     help="Total overweight positions >5%")
+        
+        with col_metrics3:
+            st.metric("Underweight Risk", f"{underweight_risk:.1f}%",
+                     help="Total underweight positions <-5%")
+        
+        with col_metrics4:
+            st.metric("Significant Bets", f"{sig_overweight + sig_underweight}",
+                     help="Sectors with >5% deviation")
+        
+        st.markdown("---")
+        
+        # === DETAILED SECTOR TABLE WITH ANALYSIS ===
+        col_table, col_insights = st.columns([2.5, 1.5])
+        
+        with col_table:
+            st.markdown("### Detailed Sector Breakdown")
+            
+            # Enhanced table with additional metrics
+            display_df = comparison_df.copy()
+            display_df['Status'] = display_df['Active Weight'].apply(
+                lambda x: 'Strong OW' if x > 10 else 'Overweight' if x > 5 else 
+                         'Strong UW' if x < -10 else 'Underweight' if x < -5 else 'Neutral'
+            )
+            
+            # Format for display
+            display_df['Portfolio'] = display_df['Portfolio'].apply(lambda x: f"{x:.1f}%")
+            display_df['SPY'] = display_df['SPY'].apply(lambda x: f"{x:.1f}%")
+            display_df['Active Weight'] = display_df['Active Weight'].apply(lambda x: f"{x:+.1f}%")
+            
+            st.dataframe(
+                display_df[['Sector', 'Portfolio', 'SPY', 'Active Weight', 'Status']],
+                hide_index=True,
+                use_container_width=True,
+                height=400
+            )
+        
+        with col_insights:
+            st.markdown("### Key Sector Insights")
+            
+            # Top bets
+            top_overweight = comparison_df.nlargest(1, 'Active Weight').iloc[0]
+            top_underweight = comparison_df.nsmallest(1, 'Active Weight').iloc[0]
+            
+            st.markdown(f"""
+            <div style="background: rgba(239, 68, 68, 0.1); padding: 14px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid {COLORS['danger']};">
+                <strong style="font-size: 13px;">Largest Overweight</strong><br>
+                <strong style="font-size: 16px; color: {COLORS['danger']};">{top_overweight['Sector']}</strong><br>
+                <span style="font-size: 13px; color: {COLORS['text_muted']};">
+                    {top_overweight['Active Weight']:+.1f}% vs SPY<br>
+                    {top_overweight['Portfolio']:.1f}% of portfolio
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown(f"""
+            <div style="background: rgba(59, 130, 246, 0.1); padding: 14px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid {COLORS['chart_blue']};">
+                <strong style="font-size: 13px;">Largest Underweight</strong><br>
+                <strong style="font-size: 16px; color: {COLORS['chart_blue']};">{top_underweight['Sector']}</strong><br>
+                <span style="font-size: 13px; color: {COLORS['text_muted']};">
+                    {top_underweight['Active Weight']:+.1f}% vs SPY<br>
+                    {top_underweight['Portfolio']:.1f}% of portfolio
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Portfolio style analysis
+            if active_share > 60:
+                style = "High Conviction"
+                style_desc = "Significantly differentiated from benchmark"
+            elif active_share > 40:
+                style = "Active Management"
+                style_desc = "Moderate active positioning"
+            elif active_share > 20:
+                style = "Enhanced Index"
+                style_desc = "Slight tilts vs benchmark"
+            else:
+                style = "Index-Like"
+                style_desc = "Closely tracks SPY allocation"
+            
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%); padding: 14px; border-radius: 8px; border: 1px solid {COLORS['border']};">
+                <strong style="font-size: 13px; color: {COLORS['text_muted']};">PORTFOLIO STYLE</strong><br>
+                <strong style="font-size: 18px; color: {COLORS['primary']};">{style}</strong><br>
+                <span style="font-size: 12px; color: {COLORS['text_muted']};">{style_desc}</span>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # === POSITION-LEVEL ANALYSIS ===
+        st.markdown("## Position Analysis")
+        
+        col_pos1, col_pos2 = st.columns(2)
+        
+        with col_pos1:
+            st.markdown("### Top Day Movers")
+            top_movers = engine.holdings.nlargest(5, 'DayChangePct')[['Symbol', 'Name', 'DayChangePct', 'DayPL', 'Weight']]
+            
+            for _, row in top_movers.iterrows():
+                color = COLORS['success'] if row['DayChangePct'] > 0 else COLORS['danger']
+                st.markdown(f"""
+                <div style="background: white; padding: 14px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid {color}; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="font-size: 15px; color: {COLORS['text']};">{row['Symbol']}</strong> 
+                            <span style="font-size: 11px; color: {COLORS['text_muted']};"> • {row['Weight']:.1f}% of portfolio</span><br>
+                            <span style="font-size: 11px; color: {COLORS['text_muted']};">{row['Name'][:35]}</span>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 18px; font-weight: 700; color: {color};">{row['DayChangePct']:+.2f}%</div>
+                            <div style="font-size: 12px; color: {COLORS['text_muted']};">${row['DayPL']:+,.0f}</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        with col_pos2:
+            st.markdown("### Concentration Analysis")
+            
+            # HHI (Herfindahl-Hirschman Index)
+            weights_squared = (engine.holdings['Weight'] ** 2).sum()
+            hhi = weights_squared
+            
+            # Effective number of positions
+            effective_n = 10000 / hhi if hhi > 0 else 0
+            
+            st.metric("HHI (Concentration Index)", f"{hhi:.0f}",
+                     help="Herfindahl-Hirschman Index: <1500 = diversified, >2500 = concentrated")
+            
+            st.metric("Effective # of Stocks", f"{effective_n:.1f}",
+                     help="Diversification-weighted number of positions")
+            
+            # Top N concentration
+            top5_weight = engine.holdings.nlargest(5, 'Weight')['Weight'].sum()
+            top10_weight = engine.holdings.nlargest(10, 'Weight')['Weight'].sum()
+            
+            st.metric("Top 5 Concentration", f"{top5_weight:.1f}%")
+            st.metric("Top 10 Concentration", f"{top10_weight:.1f}%")
+            
+            # Concentration warning
+            if top5_weight > 50:
+                st.warning("High concentration risk in top 5 holdings")
+            elif hhi > 2500:
+                st.warning("Portfolio shows high concentration (HHI > 2500)")
+            else:
+                st.success("Well-diversified portfolio structure")
+        
+        st.markdown("---")
+        
+        # === PERFORMANCE DISTRIBUTION ===
+        st.markdown("## Return Distribution Analysis")
+        
+        col_dist1, col_dist2, col_dist3 = st.columns(3)
+        
+        with col_dist1:
+            # Winners vs Losers
+            winners = len(engine.holdings[engine.holdings['TotalPLPct'] > 0])
+            losers = len(engine.holdings[engine.holdings['TotalPLPct'] <= 0])
+            win_rate = (winners / len(engine.holdings) * 100) if len(engine.holdings) > 0 else 0
+            
+            win_loss_fig = go.Figure(data=[go.Pie(
+                labels=['Winners', 'Losers'],
+                values=[winners, losers],
+                hole=0.5,
+                marker={'colors': [COLORS['success'], COLORS['danger']]},
+                textinfo='label+value',
+                textfont={'size': 13, 'color': 'white'}
+            )])
+            
+            win_loss_fig.update_layout(
+                title=f"Win Rate: {win_rate:.0f}%",
+                template=PLOTLY_TEMPLATE,
+                height=300,
+                showlegend=False,
+                annotations=[dict(text=f'{winners}/{len(engine.holdings)}', x=0.5, y=0.5, 
+                                font_size=20, showarrow=False, font_color=COLORS['text'])]
+            )
+            st.plotly_chart(win_loss_fig, use_container_width=True)
+        
+        with col_dist2:
+            # Return distribution histogram
+            perf_fig = go.Figure()
+            
+            perf_fig.add_trace(go.Histogram(
+                x=engine.holdings['TotalPLPct'],
+                nbinsx=15,
+                marker_color=COLORS['primary'],
+                opacity=0.8,
+                name='Positions'
+            ))
+            
+            # Add mean line
+            mean_return = engine.holdings['TotalPLPct'].mean()
+            perf_fig.add_vline(x=mean_return, line_dash="dash", line_color=COLORS['danger'],
+                              annotation_text=f"Mean: {mean_return:.1f}%", annotation_position="top")
+            
+            perf_fig.update_layout(
+                title="Return Distribution",
+                xaxis_title="Total Return (%)",
+                yaxis_title="# of Positions",
+                template=PLOTLY_TEMPLATE,
+                height=300,
+                showlegend=False
+            )
+            st.plotly_chart(perf_fig, use_container_width=True)
+        
+        with col_dist3:
+            # Performance metrics
+            avg_return = engine.holdings['TotalPLPct'].mean()
+            median_return = engine.holdings['TotalPLPct'].median()
+            best_return = engine.holdings['TotalPLPct'].max()
+            worst_return = engine.holdings['TotalPLPct'].min()
+            
+            st.metric("Average Return", f"{avg_return:+.2f}%")
+            st.metric("Median Return", f"{median_return:+.2f}%")
+            st.metric("Best Performer", f"{best_return:+.2f}%")
+            st.metric("Worst Performer", f"{worst_return:+.2f}%")
+            
+            # Return dispersion
+            std_return = engine.holdings['TotalPLPct'].std()
+            st.metric("Return Dispersion (StdDev)", f"{std_return:.2f}%",
+                     help="Measures consistency of returns across positions")
+        # Executive Summary Banner
         st.markdown("""
         <div style="background: linear-gradient(135deg, #0B5FFF 0%, #2563EB 100%); padding: 24px; border-radius: 12px; margin-bottom: 24px; color: white;">
             <h2 style="color: white; margin: 0 0 12px 0;">Executive Summary</h2>
