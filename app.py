@@ -339,6 +339,78 @@ def get_basics(symbol: str) -> Dict:
     except Exception as e:
         return {'name': symbol, 'sector': 'Unknown', 'industry': 'Unknown', 'market_cap': 0}
 
+@st.cache_data(ttl=1800)  # 30 minute cache
+def get_alpha_vantage_news(symbols: List[str], limit: int = 50) -> pd.DataFrame:
+    """Get news from Alpha Vantage API."""
+    if not ALPHA_VANTAGE_KEY:
+        return pd.DataFrame(columns=['symbol', 'title', 'source', 'published', 'link', 'sentiment', 'relevance'])
+    
+    import requests
+    news_items = []
+    
+    # Alpha Vantage allows comma-separated tickers
+    tickers_str = ','.join(symbols[:10])  # Limit to 10 tickers
+    
+    try:
+        url = f'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={tickers_str}&apikey={ALPHA_VANTAGE_KEY}&limit={limit}'
+        response = requests.get(url, timeout=10)
+        data = response.json()
+        
+        if 'feed' in data:
+            for item in data['feed']:
+                # Find which ticker this news is about
+                ticker_sentiment = item.get('ticker_sentiment', [])
+                main_ticker = ticker_sentiment[0]['ticker'] if ticker_sentiment else 'UNKNOWN'
+                
+                # Get sentiment score
+                sentiment_score = float(ticker_sentiment[0].get('ticker_sentiment_score', 0)) if ticker_sentiment else 0
+                
+                if sentiment_score > 0.15:
+                    sentiment = 'Positive'
+                elif sentiment_score < -0.15:
+                    sentiment = 'Negative'
+                else:
+                    sentiment = 'Neutral'
+                
+                relevance = float(ticker_sentiment[0].get('relevance_score', 0)) if ticker_sentiment else 0
+                
+                news_items.append({
+                    'symbol': main_ticker,
+                    'title': item.get('title', ''),
+                    'source': item.get('source', 'Unknown'),
+                    'published': datetime.strptime(item.get('time_published', '20240101T000000'), '%Y%m%dT%H%M%S'),
+                    'link': item.get('url', ''),
+                    'sentiment': sentiment,
+                    'relevance': relevance
+                })
+    except Exception as e:
+        st.warning(f"Alpha Vantage API error: {e}")
+        return pd.DataFrame(columns=['symbol', 'title', 'source', 'published', 'link', 'sentiment', 'relevance'])
+    
+    if not news_items:
+        return pd.DataFrame(columns=['symbol', 'title', 'source', 'published', 'link', 'sentiment', 'relevance'])
+    
+    return pd.DataFrame(news_items).sort_values('published', ascending=False).reset_index(drop=True)
+
+@st.cache_data(ttl=86400)  # 24 hour cache
+def get_spy_sector_allocation() -> Dict[str, float]:
+    """Get SPY sector allocation (approximate, based on S&P 500)."""
+    # Source: S&P 500 sector weights (approximate as of 2024)
+    return {
+        'Technology': 29.5,
+        'Financial Services': 13.0,
+        'Healthcare': 12.5,
+        'Consumer Cyclical': 10.5,
+        'Communication Services': 9.0,
+        'Industrials': 8.5,
+        'Consumer Defensive': 6.5,
+        'Energy': 4.0,
+        'Utilities': 2.5,
+        'Real Estate': 2.5,
+        'Basic Materials': 2.0,
+        'Unknown': 0.0
+    }
+
 @st.cache_data(ttl=300)  # 5 minute cache
 def get_news(symbols: List[str], limit: int = 5) -> pd.DataFrame:
     """Get news for portfolio symbols."""
@@ -889,13 +961,12 @@ def main():
         """, unsafe_allow_html=True)
     
     # Main tabs
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "📈 Overview",
         "📋 Positions", 
         "🔍 Individual Holdings",
         "⚖️ Performance vs VTI",
         "🎯 Risk & Analytics",
-        "📰 News & Events",
         "🔮 What-If Analysis"
     ])
     
@@ -1745,76 +1816,8 @@ def main():
             )
             st.plotly_chart(sharpe_fig, use_container_width=True)
     
-    # TAB 6: NEWS & EVENTS
+    # TAB 6: WHAT-IF ANALYSIS
     with tab6:
-        st.subheader("News & Events")
-        
-        col1, col2 = st.columns([2, 1])
-        
-        with col1:
-            st.subheader("📰 Latest News")
-            
-            # Add loading indicator
-            with st.spinner("Loading news..."):
-                news_df = get_news(engine.symbols, limit=5)
-            
-            if not news_df.empty:
-                for _, row in news_df.head(15).iterrows():
-                    sentiment_emoji = {
-                        'Positive': '📈',
-                        'Negative': '📉',
-                        'Neutral': '➡️'
-                    }.get(row['sentiment'], '➡️')
-                    
-                    sentiment_color = {
-                        'Positive': COLORS['success'],
-                        'Negative': COLORS['danger'],
-                        'Neutral': COLORS['text_muted']
-                    }.get(row['sentiment'], COLORS['text_muted'])
-                    
-                    with st.container():
-                        st.markdown(f"""
-                        <div style="padding: 15px; background: white; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid {sentiment_color};">
-                            <div style="margin-bottom: 8px;">
-                                <span style="background: {COLORS['primary']}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; margin-right: 8px; font-weight: bold;">{row['symbol']}</span>
-                                <span style="font-size: 14px;">{sentiment_emoji} <strong style="color: {sentiment_color};">{row['sentiment']}</strong></span>
-                            </div>
-                            <h4 style="margin: 10px 0 8px 0; font-size: 16px; line-height: 1.4;">{row['title']}</h4>
-                            <p style="color: {COLORS['text_muted']}; font-size: 12px; margin: 0;">
-                                <strong>{row['source']}</strong> • {row['published'].strftime('%b %d, %Y %H:%M')} • 
-                                <a href="{row['link']}" target="_blank" style="color: {COLORS['primary']};">Read more →</a>
-                            </p>
-                        </div>
-                        """, unsafe_allow_html=True)
-            else:
-                st.info("📭 No recent news available for your holdings. News data may be temporarily unavailable from Yahoo Finance.")
-                st.markdown("**Note:** Yahoo Finance news API has rate limits. Try refreshing in a few minutes.")
-        
-        with col2:
-            st.subheader("📊 Portfolio Stats")
-            
-            # Quick stats
-            top_gainer = engine.holdings.nlargest(1, 'DayChangePct').iloc[0]
-            top_loser = engine.holdings.nsmallest(1, 'DayChangePct').iloc[0]
-            
-            st.metric("🔥 Top Gainer Today", 
-                     top_gainer['Symbol'],
-                     f"{top_gainer['DayChangePct']:.2f}%")
-            
-            st.metric("❄️ Top Loser Today", 
-                     top_loser['Symbol'],
-                     f"{top_loser['DayChangePct']:.2f}%")
-            
-            st.markdown("---")
-            
-            # Sector breakdown
-            st.subheader("Sector Breakdown")
-            for sector, weight in engine.sector_allocation.head(5).items():
-                st.write(f"**{sector}:** {weight:.1f}%")
-                st.progress(weight / 100)
-    
-    # TAB 7: WHAT-IF ANALYSIS
-    with tab7:
         st.subheader("🔮 What-If Analysis & Portfolio Optimizer")
         
         st.markdown("""
