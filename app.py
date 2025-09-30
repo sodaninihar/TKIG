@@ -480,15 +480,25 @@ def get_stock_info(symbol: str) -> Dict:
             'description': 'Information not available'
         }
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, show_spinner=False)
 def get_stock_news(symbol: str, limit: int = 10) -> pd.DataFrame:
     """Get news for a specific stock - uses Alpha Vantage if available."""
     
+    # Get API key (check secrets first, then env vars)
+    api_key = None
+    try:
+        api_key = st.secrets.get("ALPHA_VANTAGE_KEY", None)
+    except:
+        pass
+    
+    if not api_key:
+        api_key = os.environ.get('ALPHA_VANTAGE_KEY', None)
+    
     # Try Alpha Vantage first
-    if ALPHA_VANTAGE_KEY:
+    if api_key:
         try:
             import requests
-            url = f'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={symbol}&apikey={ALPHA_VANTAGE_KEY}&limit={limit}'
+            url = f'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={symbol}&apikey={api_key}&limit={limit}'
             response = requests.get(url, timeout=10)
             data = response.json()
             
