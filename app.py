@@ -1711,36 +1711,39 @@ def main():
         rolling_vol = port_ret.rolling(90).std() * np.sqrt(252) * 100
         rolling_sharpe = (port_ret.rolling(90).mean() * 252) / (port_ret.rolling(90).std() * np.sqrt(252))
         
-        rolling_fig = make_subplots(
-            rows=2, cols=1,
-            subplot_titles=('Rolling 90-Day Volatility', 'Rolling 90-Day Sharpe Ratio'),
-            vertical_spacing=0.12
-        )
+        col_roll1, col_roll2 = st.columns(2)
         
-        rolling_fig.add_trace(
-            go.Scatter(x=rolling_vol.index, y=rolling_vol.values, name='Volatility',
-                      fill='tozeroy', line={'color': COLORS['chart_purple']}),
-            row=1, col=1
-        )
+        with col_roll1:
+            st.markdown("**Rolling 90-Day Volatility**")
+            vol_fig = go.Figure()
+            vol_fig.add_trace(
+                go.Scatter(x=rolling_vol.index, y=rolling_vol.values, name='Volatility',
+                          fill='tozeroy', line={'color': COLORS['chart_purple']})
+            )
+            vol_fig.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Volatility (%)",
+                template=PLOTLY_TEMPLATE,
+                height=300,
+                showlegend=False
+            )
+            st.plotly_chart(vol_fig, use_container_width=True)
         
-        rolling_fig.add_trace(
-            go.Scatter(x=rolling_sharpe.index, y=rolling_sharpe.values, name='Sharpe Ratio',
-                      line={'color': COLORS['chart_blue'], 'width': 2}),
-            row=2, col=1
-        )
-        
-        rolling_fig.update_xaxes(title_text="Date", row=2, col=1)
-        rolling_fig.update_yaxes(title_text="Volatility (%)", row=1, col=1)
-        rolling_fig.update_yaxes(title_text="Sharpe Ratio", row=2, col=1)
-        
-        rolling_fig.update_layout(
-            template=PLOTLY_TEMPLATE,
-            height=600,
-            showlegend=False,
-            hovermode='x unified'
-        )
-        
-        st.plotly_chart(rolling_fig, use_container_width=True)
+        with col_roll2:
+            st.markdown("**Rolling 90-Day Sharpe Ratio**")
+            sharpe_fig = go.Figure()
+            sharpe_fig.add_trace(
+                go.Scatter(x=rolling_sharpe.index, y=rolling_sharpe.values, name='Sharpe Ratio',
+                          line={'color': COLORS['chart_blue'], 'width': 2})
+            )
+            sharpe_fig.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Sharpe Ratio",
+                template=PLOTLY_TEMPLATE,
+                height=300,
+                showlegend=False
+            )
+            st.plotly_chart(sharpe_fig, use_container_width=True)
     
     # TAB 6: NEWS & EVENTS
     with tab6:
