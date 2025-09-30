@@ -124,13 +124,35 @@ def normalize_ticker(symbol: str) -> str:
 def get_prices(symbols: List[str], period: str = '5y') -> pd.DataFrame:
     """Download historical adjusted close prices for symbols."""
     try:
-        data = yf.download(symbols, period=period, progress=False, group_by='ticker')
+        if len(symbols) == 0:
+            return pd.DataFrame()
+        
+        # Download with proper error handling
+        data = yf.download(symbols, period=period, progress=False, group_by='ticker', auto_adjust=True)
+        
+        if data.empty:
+            return pd.DataFrame()
         
         if len(symbols) == 1:
-            prices = data['Adj Close'].to_frame()
-            prices.columns = symbols
+            # Single ticker
+            if 'Close' in data.columns:
+                prices = data[['Close']].copy()
+                prices.columns = symbols
+            else:
+                prices = data['Close'].to_frame()
+                prices.columns = symbols
         else:
-            prices = pd.DataFrame({symbol: data[symbol]['Adj Close'] for symbol in symbols if symbol in data})
+            # Multiple tickers
+            prices = pd.DataFrame()
+            for symbol in symbols:
+                try:
+                    if symbol in data.columns.get_level_values(0):
+                        prices[symbol] = data[symbol]['Close']
+                    elif 'Close' in data.columns:
+                        # Fallback for different data structure
+                        prices[symbol] = data['Close']
+                except:
+                    continue
         
         return prices.dropna(how='all')
     except Exception as e:
@@ -236,6 +258,17 @@ class PortfolioEngine:
         
         # Load historical prices
         self.prices = get_prices(self.all_symbols, period='5y')
+        
+        # Verify benchmark loaded
+        if self.benchmark not in self.prices.columns:
+            st.warning(f"⚠️ Benchmark {self.benchmark} data not available. Downloading separately...")
+            benchmark_prices = get_prices([self.benchmark], period='5y')
+            if not benchmark_prices.empty:
+                self.prices[self.benchmark] = benchmark_prices[self.benchmark]
+            else:
+                st.error(f"Failed to load benchmark {self.benchmark}")
+                # Create dummy benchmark as fallback
+                self.prices[self.benchmark] = pd.Series(100, index=self.prices.index)
         
         # Calculate portfolio metrics
         self._calculate_metrics()
@@ -690,90 +723,94 @@ def main():
     with tab3:
         st.subheader("Performance vs VTI")
         
-        # Cumulative return chart
-        port_ts = engine.compute_portfolio_timeseries()
-        bench_ts = engine.prices[engine.benchmark]
-        
-        port_norm = port_ts / port_ts.iloc[0] * 100
-        bench_norm = bench_ts / bench_ts.iloc[0] * 100
-        
-        cum_return_fig = go.Figure()
-        cum_return_fig.add_trace(go.Scatter(x=port_norm.index, y=port_norm.values, name='Portfolio',
-                                           line={'color': COLORS['primary'], 'width': 2}))
-        cum_return_fig.add_trace(go.Scatter(x=bench_norm.index, y=bench_norm.values, name='VTI',
-                                           line={'color': COLORS['text_muted'], 'width': 2, 'dash': 'dash'}))
-        cum_return_fig.update_layout(
-            title="Cumulative Return (Normalized to 100)",
-            xaxis_title="Date",
-            yaxis_title="Value",
-            template=PLOTLY_TEMPLATE,
-            height=400,
-            hovermode='x unified'
-        )
-        st.plotly_chart(cum_return_fig, use_container_width=True)
-        
-        # Performance metrics
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Performance Metrics")
-            metrics = engine.compute_performance_metrics()
+        # Check if benchmark data is available
+        if engine.benchmark not in engine.prices.columns:
+            st.error(f"Benchmark {engine.benchmark} data not available. Cannot display performance comparison.")
+        else:
+            # Cumulative return chart
+            port_ts = engine.compute_portfolio_timeseries()
+            bench_ts = engine.prices[engine.benchmark]
             
-            metrics_df = pd.DataFrame([
-                {'Metric': 'Annualized Return', 'Portfolio': f"{metrics['portfolio_return']*100:.2f}%", 
-                 'VTI': f"{metrics['benchmark_return']*100:.2f}%"},
-                {'Metric': 'Volatility', 'Portfolio': f"{metrics['portfolio_volatility']*100:.2f}%", 
-                 'VTI': f"{metrics['benchmark_volatility']*100:.2f}%"},
-                {'Metric': 'Sharpe Ratio', 'Portfolio': f"{metrics['portfolio_sharpe']:.2f}", 
-                 'VTI': f"{metrics['benchmark_sharpe']:.2f}"},
-                {'Metric': 'Max Drawdown', 'Portfolio': f"{metrics['portfolio_max_drawdown']*100:.2f}%", 
-                 'VTI': f"{metrics['benchmark_max_drawdown']*100:.2f}%"},
-                {'Metric': 'Tracking Error', 'Portfolio': f"{metrics['tracking_error']*100:.2f}%", 'VTI': '-'},
-                {'Metric': 'Information Ratio', 'Portfolio': f"{metrics['information_ratio']:.2f}", 'VTI': '-'},
-                {'Metric': 'Beta vs VTI', 'Portfolio': f"{metrics['beta']:.2f}", 'VTI': '1.00'}
-            ])
+            port_norm = port_ts / port_ts.iloc[0] * 100
+            bench_norm = bench_ts / bench_ts.iloc[0] * 100
             
-            st.dataframe(metrics_df, hide_index=True, use_container_width=True)
-        
-        with col2:
-            st.subheader("Rolling 60-Day Excess Return")
-            port_ret, bench_ret = engine.compute_returns()
-            excess_ret = (port_ret - bench_ret).rolling(60).mean() * 100
-            
-            excess_fig = go.Figure()
-            excess_fig.add_trace(go.Scatter(
-                x=excess_ret.index,
-                y=excess_ret.values,
-                name='60-Day Excess Return',
-                fill='tozeroy',
-                line={'color': COLORS['primary']}
-            ))
-            excess_fig.update_layout(
+            cum_return_fig = go.Figure()
+            cum_return_fig.add_trace(go.Scatter(x=port_norm.index, y=port_norm.values, name='Portfolio',
+                                               line={'color': COLORS['primary'], 'width': 2}))
+            cum_return_fig.add_trace(go.Scatter(x=bench_norm.index, y=bench_norm.values, name='VTI',
+                                               line={'color': COLORS['text_muted'], 'width': 2, 'dash': 'dash'}))
+            cum_return_fig.update_layout(
+                title="Cumulative Return (Normalized to 100)",
                 xaxis_title="Date",
-                yaxis_title="Excess Return (%)",
+                yaxis_title="Value",
                 template=PLOTLY_TEMPLATE,
-                height=350
+                height=400,
+                hovermode='x unified'
             )
-            st.plotly_chart(excess_fig, use_container_width=True)
-        
-        # Attribution
-        st.subheader("YTD Return Attribution by Ticker")
-        attribution = engine.compute_attribution('YTD')
-        
-        if not attribution.empty:
-            attr_fig = go.Figure()
-            attr_fig.add_trace(go.Bar(
-                x=attribution['Symbol'],
-                y=attribution['Contribution'],
-                marker_color=[COLORS['success'] if x > 0 else COLORS['danger'] for x in attribution['Contribution']]
-            ))
-            attr_fig.update_layout(
-                xaxis_title="Symbol",
-                yaxis_title="Contribution to Return (%)",
-                template=PLOTLY_TEMPLATE,
-                height=350
-            )
-            st.plotly_chart(attr_fig, use_container_width=True)
+            st.plotly_chart(cum_return_fig, use_container_width=True)
+            
+            # Performance metrics
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.subheader("Performance Metrics")
+                metrics = engine.compute_performance_metrics()
+                
+                metrics_df = pd.DataFrame([
+                    {'Metric': 'Annualized Return', 'Portfolio': f"{metrics['portfolio_return']*100:.2f}%", 
+                     'VTI': f"{metrics['benchmark_return']*100:.2f}%"},
+                    {'Metric': 'Volatility', 'Portfolio': f"{metrics['portfolio_volatility']*100:.2f}%", 
+                     'VTI': f"{metrics['benchmark_volatility']*100:.2f}%"},
+                    {'Metric': 'Sharpe Ratio', 'Portfolio': f"{metrics['portfolio_sharpe']:.2f}", 
+                     'VTI': f"{metrics['benchmark_sharpe']:.2f}"},
+                    {'Metric': 'Max Drawdown', 'Portfolio': f"{metrics['portfolio_max_drawdown']*100:.2f}%", 
+                     'VTI': f"{metrics['benchmark_max_drawdown']*100:.2f}%"},
+                    {'Metric': 'Tracking Error', 'Portfolio': f"{metrics['tracking_error']*100:.2f}%", 'VTI': '-'},
+                    {'Metric': 'Information Ratio', 'Portfolio': f"{metrics['information_ratio']:.2f}", 'VTI': '-'},
+                    {'Metric': 'Beta vs VTI', 'Portfolio': f"{metrics['beta']:.2f}", 'VTI': '1.00'}
+                ])
+                
+                st.dataframe(metrics_df, hide_index=True, use_container_width=True)
+            
+            with col2:
+                st.subheader("Rolling 60-Day Excess Return")
+                port_ret, bench_ret = engine.compute_returns()
+                excess_ret = (port_ret - bench_ret).rolling(60).mean() * 100
+                
+                excess_fig = go.Figure()
+                excess_fig.add_trace(go.Scatter(
+                    x=excess_ret.index,
+                    y=excess_ret.values,
+                    name='60-Day Excess Return',
+                    fill='tozeroy',
+                    line={'color': COLORS['primary']}
+                ))
+                excess_fig.update_layout(
+                    xaxis_title="Date",
+                    yaxis_title="Excess Return (%)",
+                    template=PLOTLY_TEMPLATE,
+                    height=350
+                )
+                st.plotly_chart(excess_fig, use_container_width=True)
+            
+            # Attribution
+            st.subheader("YTD Return Attribution by Ticker")
+            attribution = engine.compute_attribution('YTD')
+            
+            if not attribution.empty:
+                attr_fig = go.Figure()
+                attr_fig.add_trace(go.Bar(
+                    x=attribution['Symbol'],
+                    y=attribution['Contribution'],
+                    marker_color=[COLORS['success'] if x > 0 else COLORS['danger'] for x in attribution['Contribution']]
+                ))
+                attr_fig.update_layout(
+                    xaxis_title="Symbol",
+                    yaxis_title="Contribution to Return (%)",
+                    template=PLOTLY_TEMPLATE,
+                    height=350
+                )
+                st.plotly_chart(attr_fig, use_container_width=True)
     
     # TAB 4: RISK & ANALYTICS
     with tab4:
