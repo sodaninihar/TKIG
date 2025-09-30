@@ -482,7 +482,57 @@ def get_stock_info(symbol: str) -> Dict:
 
 @st.cache_data(ttl=300)
 def get_stock_news(symbol: str, limit: int = 10) -> pd.DataFrame:
-    """Get news for a specific stock."""
+    """Get news for a specific stock - uses Alpha Vantage if available."""
+    
+    # Try Alpha Vantage first
+    if ALPHA_VANTAGE_KEY:
+        try:
+            import requests
+            url = f'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={symbol}&apikey={ALPHA_VANTAGE_KEY}&limit={limit}'
+            response = requests.get(url, timeout=10)
+            data = response.json()
+            
+            news_items = []
+            if 'feed' in data:
+                for item in data['feed']:
+                    try:
+                        # Parse timestamp correctly
+                        time_str = item.get('time_published', '20240101T000000')
+                        pub_date = datetime.strptime(time_str, '%Y%m%dT%H%M%S')
+                        
+                        # Get sentiment
+                        ticker_sentiment = item.get('ticker_sentiment', [])
+                        sentiment_score = 0
+                        
+                        if ticker_sentiment:
+                            for ts in ticker_sentiment:
+                                if ts.get('ticker') == symbol:
+                                    sentiment_score = float(ts.get('ticker_sentiment_score', 0))
+                                    break
+                        
+                        if sentiment_score > 0.15:
+                            sentiment = 'Positive'
+                        elif sentiment_score < -0.15:
+                            sentiment = 'Negative'
+                        else:
+                            sentiment = 'Neutral'
+                        
+                        news_items.append({
+                            'title': item.get('title', ''),
+                            'source': item.get('source', 'Unknown'),
+                            'published': pub_date,
+                            'link': item.get('url', ''),
+                            'sentiment': sentiment
+                        })
+                    except Exception as e:
+                        continue
+                
+                if news_items:
+                    return pd.DataFrame(news_items).sort_values('published', ascending=False).reset_index(drop=True)
+        except Exception as e:
+            st.warning(f"Alpha Vantage error: {e}. Falling back to Yahoo Finance.")
+    
+    # Fallback to Yahoo Finance
     try:
         ticker = yf.Ticker(symbol)
         news = ticker.news if hasattr(ticker, 'news') else []
