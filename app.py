@@ -700,4 +700,175 @@ def main():
         cum_return_fig = go.Figure()
         cum_return_fig.add_trace(go.Scatter(x=port_norm.index, y=port_norm.values, name='Portfolio',
                                            line={'color': COLORS['primary'], 'width': 2}))
-        cum_return_fig.add_trace(go.
+        cum_return_fig.add_trace(go.Scatter(x=bench_norm.index, y=bench_norm.values, name='VTI',
+                                           line={'color': COLORS['text_muted'], 'width': 2, 'dash': 'dash'}))
+        cum_return_fig.update_layout(
+            title="Cumulative Return (Normalized to 100)",
+            xaxis_title="Date",
+            yaxis_title="Value",
+            template=PLOTLY_TEMPLATE,
+            height=400,
+            hovermode='x unified'
+        )
+        st.plotly_chart(cum_return_fig, use_container_width=True)
+        
+        # Performance metrics
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Performance Metrics")
+            metrics = engine.compute_performance_metrics()
+            
+            metrics_df = pd.DataFrame([
+                {'Metric': 'Annualized Return', 'Portfolio': f"{metrics['portfolio_return']*100:.2f}%", 
+                 'VTI': f"{metrics['benchmark_return']*100:.2f}%"},
+                {'Metric': 'Volatility', 'Portfolio': f"{metrics['portfolio_volatility']*100:.2f}%", 
+                 'VTI': f"{metrics['benchmark_volatility']*100:.2f}%"},
+                {'Metric': 'Sharpe Ratio', 'Portfolio': f"{metrics['portfolio_sharpe']:.2f}", 
+                 'VTI': f"{metrics['benchmark_sharpe']:.2f}"},
+                {'Metric': 'Max Drawdown', 'Portfolio': f"{metrics['portfolio_max_drawdown']*100:.2f}%", 
+                 'VTI': f"{metrics['benchmark_max_drawdown']*100:.2f}%"},
+                {'Metric': 'Tracking Error', 'Portfolio': f"{metrics['tracking_error']*100:.2f}%", 'VTI': '-'},
+                {'Metric': 'Information Ratio', 'Portfolio': f"{metrics['information_ratio']:.2f}", 'VTI': '-'},
+                {'Metric': 'Beta vs VTI', 'Portfolio': f"{metrics['beta']:.2f}", 'VTI': '1.00'}
+            ])
+            
+            st.dataframe(metrics_df, hide_index=True, use_container_width=True)
+        
+        with col2:
+            st.subheader("Rolling 60-Day Excess Return")
+            port_ret, bench_ret = engine.compute_returns()
+            excess_ret = (port_ret - bench_ret).rolling(60).mean() * 100
+            
+            excess_fig = go.Figure()
+            excess_fig.add_trace(go.Scatter(
+                x=excess_ret.index,
+                y=excess_ret.values,
+                name='60-Day Excess Return',
+                fill='tozeroy',
+                line={'color': COLORS['primary']}
+            ))
+            excess_fig.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Excess Return (%)",
+                template=PLOTLY_TEMPLATE,
+                height=350
+            )
+            st.plotly_chart(excess_fig, use_container_width=True)
+        
+        # Attribution
+        st.subheader("YTD Return Attribution by Ticker")
+        attribution = engine.compute_attribution('YTD')
+        
+        if not attribution.empty:
+            attr_fig = go.Figure()
+            attr_fig.add_trace(go.Bar(
+                x=attribution['Symbol'],
+                y=attribution['Contribution'],
+                marker_color=[COLORS['success'] if x > 0 else COLORS['danger'] for x in attribution['Contribution']]
+            ))
+            attr_fig.update_layout(
+                xaxis_title="Symbol",
+                yaxis_title="Contribution to Return (%)",
+                template=PLOTLY_TEMPLATE,
+                height=350
+            )
+            st.plotly_chart(attr_fig, use_container_width=True)
+    
+    # TAB 4: RISK & ANALYTICS
+    with tab4:
+        st.subheader("Risk & Analytics")
+        
+        # Anomaly detection
+        st.subheader("🚨 Anomaly Radar")
+        anomalies = engine.detect_anomalies()
+        
+        if anomalies:
+            anomaly_df = pd.DataFrame(anomalies)
+            st.warning(f"Found {len(anomalies)} anomalies")
+            st.dataframe(anomaly_df, hide_index=True, use_container_width=True)
+        else:
+            st.success("No anomalies detected")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Portfolio Drawdown")
+            port_ts = engine.compute_portfolio_timeseries()
+            cummax = port_ts.cummax()
+            drawdown = (port_ts - cummax) / cummax * 100
+            
+            dd_fig = go.Figure()
+            dd_fig.add_trace(go.Scatter(
+                x=drawdown.index,
+                y=drawdown.values,
+                fill='tozeroy',
+                name='Drawdown',
+                line={'color': COLORS['danger']}
+            ))
+            dd_fig.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Drawdown (%)",
+                template=PLOTLY_TEMPLATE,
+                height=400
+            )
+            st.plotly_chart(dd_fig, use_container_width=True)
+        
+        with col2:
+            st.subheader("Correlation Matrix")
+            returns = engine.prices[engine.symbols].pct_change().dropna()
+            corr_matrix = returns.corr()
+            
+            heatmap_fig = go.Figure(data=go.Heatmap(
+                z=corr_matrix.values,
+                x=corr_matrix.columns,
+                y=corr_matrix.index,
+                colorscale='RdBu',
+                zmid=0,
+                text=corr_matrix.values,
+                texttemplate='%{text:.2f}',
+                textfont={"size": 8}
+            ))
+            heatmap_fig.update_layout(
+                template=PLOTLY_TEMPLATE,
+                height=400
+            )
+            st.plotly_chart(heatmap_fig, use_container_width=True)
+    
+    # TAB 5: NEWS & EVENTS
+    with tab5:
+        st.subheader("News & Events")
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            st.subheader("📰 News Feed")
+            news_df = get_news(engine.symbols, limit=10)
+            
+            if not news_df.empty:
+                for _, row in news_df.head(10).iterrows():
+                    sentiment_color = {
+                        'Positive': COLORS['success'],
+                        'Negative': COLORS['danger'],
+                        'Neutral': COLORS['text_muted']
+                    }.get(row['sentiment'], COLORS['text_muted'])
+                    
+                    with st.container():
+                        st.markdown(f"""
+                        <div style="padding: 15px; background: white; border-radius: 8px; margin-bottom: 10px; border: 1px solid {COLORS['border']};">
+                            <span style="background: {COLORS['primary']}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-right: 8px;">{row['symbol']}</span>
+                            <span style="color: {sentiment_color}; font-weight: bold;">{row['sentiment']}</span>
+                            <h4 style="margin-top: 10px; margin-bottom: 5px;">{row['title']}</h4>
+                            <p style="color: {COLORS['text_muted']}; font-size: 12px;">{row['source']} • {row['published'].strftime('%Y-%m-%d %H:%M')} • <a href="{row['link']}" target="_blank">Read more →</a></p>
+                        </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.info("No news available")
+        
+        with col2:
+            st.subheader("📅 Upcoming Earnings")
+            # Note: earnings calendar requires more API calls, simplified for now
+            st.info("Earnings calendar feature coming soon")
+
+if __name__ == "__main__":
+    main()
