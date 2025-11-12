@@ -729,38 +729,44 @@ def load_portfolio_from_csv(filepath: str) -> pd.DataFrame:
     df['AvgCost'] = pd.to_numeric(df['AvgCost'], errors='coerce')
     df['CostBasis'] = pd.to_numeric(df['CostBasis'], errors='coerce')
     
-    # Filter out zero quantity and VTI (benchmark)
+    # Filter out zero quantity, but keep SNOXX, SPY, GLD, EWJ and other positions
+    # Only exclude VTI (benchmark)
     df = df[(df['Qty'] > 0) & (df['Symbol'] != 'VTI')].reset_index(drop=True)
     
     return df[['Symbol', 'Qty', 'AvgCost', 'CostBasis']]
 
-# Default portfolio data - Updated with your actual holdings
+# Default portfolio data - Updated with your actual holdings (ALL 30 positions)
 DEFAULT_PORTFOLIO = """Symbol,Qty,AvgCost,CostBasis
-AAPL,128,28.62,3663.40
-ADBE,50,493.16,24658.00
-ADI,126,191.90,24179.20
-AMGN,108,300.38,32441.31
-BLK,31,1001.37,31042.35
-BRK-B,130,144.71,18811.89
-EL,44,124.09,5459.94
-EPD,844,26.12,22041.65
-EVRG,276,58.75,16216.35
-EXEL,822,40.37,33181.35
-FRCB,65,128.85,8375.25
-GOOGL,200,115.70,23139.10
-HII,119,301.19,35841.36
-HON,96,140.06,13445.97
-JPM,100,296.84,29683.55
-KO,724,63.17,45737.93
-MA,86,159.21,13691.83
-META,112,177.65,19896.96
-MLM,65,193.54,12579.83
-MSFT,164,69.69,11428.42
-NKE,63,128.46,8093.29
-ORLY,480,44.62,21416.00
-PG,82,125.04,10252.92
-PSX,75,118.45,8883.41
-UNH,86,439.06,37759.52
+AAPL,128.00,28.62,3663.40
+ADBE,50.00,493.16,24658.00
+ADI,126.00,191.90,24179.20
+AMGN,108.00,300.38,32441.31
+BLK,31.00,1001.37,31042.35
+BRK-B,130.00,144.71,18811.89
+EL,44.00,124.09,5459.94
+EPD,844.00,26.12,22041.65
+EVRG,276.00,58.75,16216.35
+EXEL,822.00,40.37,33181.35
+FRCB,65.00,128.85,8375.25
+GOOGL,200.00,115.70,23139.10
+HII,119.00,301.19,35841.36
+HON,96.00,140.06,13445.97
+JPM,100.00,296.84,29683.55
+KO,724.00,63.17,45737.93
+MA,86.00,159.21,13691.83
+META,112.00,177.65,19896.96
+MLM,65.00,193.54,12579.83
+MSFT,164.00,69.69,11428.42
+NKE,63.00,128.46,8093.29
+ORLY,480.00,44.62,21416.00
+PG,82.00,125.04,10252.92
+PSX,75.00,118.45,8883.41
+SOLS,24.00,0.00,0.00
+UNH,86.00,439.06,37759.52
+EWJ,375.00,82.93,31098.84
+GLD,92.00,344.75,31716.70
+SPY,93.00,295.31,27463.94
+SNOXX,81759.44,1.00,81759.44
 """
 
 # ============================================================================
@@ -810,7 +816,7 @@ def main():
             st.markdown(f"""
             <div style="background: #F1F5F9; padding: 12px; border-radius: 8px; margin: 8px 0;">
                 ℹ️ Using TKIG portfolio (Nov 2025)<br>
-                <strong>{len(portfolio_df)}</strong> positions loaded
+                <strong>{len(portfolio_df)}</strong> positions (Equities, ETFs, Cash)
             </div>
             """, unsafe_allow_html=True)
         
@@ -921,108 +927,38 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        # KPI Metrics Row with Beta
+        # KPI Metrics Row
         st.markdown("### 📊 Key Portfolio Metrics")
-        col1, col2, col3, col4, col5 = st.columns(5)
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
         
         with col1:
             st.metric("Account Value", f"${engine.total_market_value:,.0f}", 
                      help="Total market value of all positions")
         
         with col2:
+            st.metric("Cost Basis", f"${engine.total_cost_basis:,.0f}",
+                     help="Total amount invested")
+        
+        with col3:
             st.metric("Total Return", f"{engine.total_pl_pct:+.2f}%",
                      f"${engine.total_pl:+,.0f}",
                      help="Total profit/loss")
         
-        with col3:
+        with col4:
             st.metric("Day Change", f"${engine.total_day_pl:+,.0f}",
                      f"{engine.total_day_pl_pct:+.2f}%",
                      help="Today's change")
         
-        with col4:
+        with col5:
             st.metric("# Positions", len(engine.holdings),
                      help="Number of individual holdings")
         
-        with col5:
-            beta_delta = "↑ Higher Vol" if engine.portfolio_beta > 1.0 else "↓ Lower Vol" if engine.portfolio_beta < 1.0 else "≈ Market"
-            beta_delta_type = "normal" if 0.8 <= engine.portfolio_beta <= 1.2 else "inverse" if engine.portfolio_beta < 0.8 else "off"
-            st.metric("**Portfolio Beta**", f"{engine.portfolio_beta:.3f}",
-                     beta_delta,
-                     delta_color=beta_delta_type,
-                     help="Sensitivity to VTI. Beta=1.0 means moves with market. >1.0 = more volatile, <1.0 = less volatile")
+        with col6:
+            # Calculate weighted average return
+            avg_return = engine.holdings['TotalPLPct'].mean()
+            st.metric("Avg Position Return", f"{avg_return:+.2f}%",
+                     help="Average return across all positions")
         
-        st.markdown("---")
-        
-        # === PORTFOLIO BETA CARD (PROMINENT) ===
-        st.markdown("## 🎯 Portfolio Beta vs VTI")
-        
-        col_beta_main, col_beta_detail1, col_beta_detail2 = st.columns([2, 1, 1])
-        
-        with col_beta_main:
-            # Determine beta status and color
-            if engine.portfolio_beta > 1.2:
-                beta_status = "⚠️ HIGH VOLATILITY"
-                beta_color = COLORS['danger']
-                beta_bg = "rgba(239, 68, 68, 0.1)"
-                beta_message = f"Your portfolio is **{((engine.portfolio_beta - 1) * 100):.0f}% MORE volatile** than VTI. When VTI moves 1%, your portfolio typically moves {engine.portfolio_beta:.2f}%."
-            elif engine.portfolio_beta < 0.8:
-                beta_status = "🛡️ DEFENSIVE"
-                beta_color = COLORS['success']
-                beta_bg = "rgba(16, 185, 129, 0.1)"
-                beta_message = f"Your portfolio is **{((1 - engine.portfolio_beta) * 100):.0f}% LESS volatile** than VTI. When VTI moves 1%, your portfolio typically moves {engine.portfolio_beta:.2f}%."
-            else:
-                beta_status = "⚖️ MARKET-ALIGNED"
-                beta_color = COLORS['primary']
-                beta_bg = "rgba(11, 95, 255, 0.1)"
-                beta_message = f"Your portfolio moves **in line with the market** (VTI). When VTI moves 1%, your portfolio typically moves {engine.portfolio_beta:.2f}%."
-            
-            st.markdown(f"""
-            <div style="background: {beta_bg}; padding: 24px; border-radius: 12px; border-left: 6px solid {beta_color};">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                    <div>
-                        <span style="font-size: 14px; color: {COLORS['text_muted']}; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Portfolio Beta</span>
-                    </div>
-                    <div>
-                        <span style="font-size: 48px; font-weight: 700; color: {beta_color};">{engine.portfolio_beta:.3f}</span>
-                    </div>
-                </div>
-                <div style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 12px;">
-                    <strong style="color: {beta_color}; font-size: 16px;">{beta_status}</strong>
-                </div>
-                <p style="color: {COLORS['text']}; font-size: 14px; line-height: 1.6; margin: 0;">
-                    {beta_message}
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col_beta_detail1:
-            st.markdown("**📊 Beta Scale**")
-            st.markdown(f"""
-            ```
-            > 1.2   HIGH RISK
-              1.0   MARKET
-            < 0.8   DEFENSIVE
-            
-            You: {engine.portfolio_beta:.3f}
-            ```
-            """)
-            
-            # Visual indicator
-            beta_position = min(max((engine.portfolio_beta - 0.5) / 1.5, 0), 1)
-            st.progress(beta_position)
-            st.caption("Position on risk spectrum")
-        
-        with col_beta_detail2:
-            st.markdown("**🎲 Expected Moves**")
-            st.markdown(f"""
-            **If VTI moves:**
-            - +1% → Portfolio: **{engine.portfolio_beta*1:+.2f}%**
-            - -1% → Portfolio: **{engine.portfolio_beta*-1:+.2f}%**
-            - +5% → Portfolio: **{engine.portfolio_beta*5:+.2f}%**
-            - -5% → Portfolio: **{engine.portfolio_beta*-5:+.2f}%**
-            - +10% → Portfolio: **{engine.portfolio_beta*10:+.2f}%**
-            - -10% → Portfolio: **{engine.portfolio_beta*-10:+.2f}%**
-            """)
         
         st.markdown("---")
         
