@@ -251,7 +251,9 @@ TICKER_MAP = {
     'BRKB': 'BRK-B',
     'BRK.B': 'BRK-B',
     'BRKA': 'BRK-A',
-    'BRK.A': 'BRK-A'
+    'BRK.A': 'BRK-A',
+    'BRK/B': 'BRK-B',
+    'BRK/A': 'BRK-A'
 }
 
 def normalize_ticker(symbol: str) -> str:
@@ -339,59 +341,6 @@ def get_basics(symbol: str) -> Dict:
     except Exception as e:
         return {'name': symbol, 'sector': 'Unknown', 'industry': 'Unknown', 'market_cap': 0}
 
-@st.cache_data(ttl=1800)  # 30 minute cache
-def get_alpha_vantage_news(symbols: List[str], limit: int = 50) -> pd.DataFrame:
-    """Get news from Alpha Vantage API."""
-    if not ALPHA_VANTAGE_KEY:
-        return pd.DataFrame(columns=['symbol', 'title', 'source', 'published', 'link', 'sentiment', 'relevance'])
-    
-    import requests
-    news_items = []
-    
-    # Alpha Vantage allows comma-separated tickers
-    tickers_str = ','.join(symbols[:10])  # Limit to 10 tickers
-    
-    try:
-        url = f'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={tickers_str}&apikey={ALPHA_VANTAGE_KEY}&limit={limit}'
-        response = requests.get(url, timeout=10)
-        data = response.json()
-        
-        if 'feed' in data:
-            for item in data['feed']:
-                # Find which ticker this news is about
-                ticker_sentiment = item.get('ticker_sentiment', [])
-                main_ticker = ticker_sentiment[0]['ticker'] if ticker_sentiment else 'UNKNOWN'
-                
-                # Get sentiment score
-                sentiment_score = float(ticker_sentiment[0].get('ticker_sentiment_score', 0)) if ticker_sentiment else 0
-                
-                if sentiment_score > 0.15:
-                    sentiment = 'Positive'
-                elif sentiment_score < -0.15:
-                    sentiment = 'Negative'
-                else:
-                    sentiment = 'Neutral'
-                
-                relevance = float(ticker_sentiment[0].get('relevance_score', 0)) if ticker_sentiment else 0
-                
-                news_items.append({
-                    'symbol': main_ticker,
-                    'title': item.get('title', ''),
-                    'source': item.get('source', 'Unknown'),
-                    'published': datetime.strptime(item.get('time_published', '20240101T000000'), '%Y%m%dT%H%M%S'),
-                    'link': item.get('url', ''),
-                    'sentiment': sentiment,
-                    'relevance': relevance
-                })
-    except Exception as e:
-        st.warning(f"Alpha Vantage API error: {e}")
-        return pd.DataFrame(columns=['symbol', 'title', 'source', 'published', 'link', 'sentiment', 'relevance'])
-    
-    if not news_items:
-        return pd.DataFrame(columns=['symbol', 'title', 'source', 'published', 'link', 'sentiment', 'relevance'])
-    
-    return pd.DataFrame(news_items).sort_values('published', ascending=False).reset_index(drop=True)
-
 @st.cache_data(ttl=86400)  # 24 hour cache
 def get_spy_sector_allocation() -> Dict[str, float]:
     """Get SPY sector allocation (approximate, based on S&P 500)."""
@@ -410,40 +359,6 @@ def get_spy_sector_allocation() -> Dict[str, float]:
         'Basic Materials': 2.0,
         'Unknown': 0.0
     }
-
-@st.cache_data(ttl=300)  # 5 minute cache
-def get_news(symbols: List[str], limit: int = 5) -> pd.DataFrame:
-    """Get news for portfolio symbols."""
-    news_items = []
-    
-    # Only get news for top 10 holdings to avoid rate limits
-    for symbol in symbols[:10]:
-        try:
-            ticker = yf.Ticker(symbol)
-            # Use info endpoint which is more reliable
-            news = ticker.news if hasattr(ticker, 'news') else []
-            
-            if news:
-                for item in news[:limit]:
-                    try:
-                        news_items.append({
-                            'symbol': symbol,
-                            'title': item.get('title', ''),
-                            'source': item.get('publisher', 'Unknown'),
-                            'published': datetime.fromtimestamp(item.get('providerPublishTime', 0)),
-                            'link': item.get('link', ''),
-                            'sentiment': _simple_sentiment(item.get('title', ''))
-                        })
-                    except:
-                        continue
-        except Exception as e:
-            continue
-    
-    if not news_items:
-        # Return empty dataframe with correct structure
-        return pd.DataFrame(columns=['symbol', 'title', 'source', 'published', 'link', 'sentiment'])
-    
-    return pd.DataFrame(news_items).sort_values('published', ascending=False).reset_index(drop=True)
 
 @st.cache_data(ttl=300)
 def get_stock_info(symbol: str) -> Dict:
@@ -479,93 +394,6 @@ def get_stock_info(symbol: str) -> Dict:
             'avg_volume': 0,
             'description': 'Information not available'
         }
-
-@st.cache_data(ttl=300, show_spinner=False)
-def get_stock_news(symbol: str, limit: int = 10) -> pd.DataFrame:
-    """Get news for a specific stock - uses Alpha Vantage if available."""
-    
-    # Get API key (check secrets first, then env vars)
-    api_key = None
-    try:
-        api_key = st.secrets.get("ALPHA_VANTAGE_KEY", None)
-    except:
-        pass
-    
-    if not api_key:
-        api_key = os.environ.get('ALPHA_VANTAGE_KEY', None)
-    
-    # Try Alpha Vantage first
-    if api_key:
-        try:
-            import requests
-            url = f'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={symbol}&apikey={api_key}&limit={limit}'
-            response = requests.get(url, timeout=10)
-            data = response.json()
-            
-            news_items = []
-            if 'feed' in data:
-                for item in data['feed']:
-                    try:
-                        # Parse timestamp correctly
-                        time_str = item.get('time_published', '20240101T000000')
-                        pub_date = datetime.strptime(time_str, '%Y%m%dT%H%M%S')
-                        
-                        # Get sentiment
-                        ticker_sentiment = item.get('ticker_sentiment', [])
-                        sentiment_score = 0
-                        
-                        if ticker_sentiment:
-                            for ts in ticker_sentiment:
-                                if ts.get('ticker') == symbol:
-                                    sentiment_score = float(ts.get('ticker_sentiment_score', 0))
-                                    break
-                        
-                        if sentiment_score > 0.15:
-                            sentiment = 'Positive'
-                        elif sentiment_score < -0.15:
-                            sentiment = 'Negative'
-                        else:
-                            sentiment = 'Neutral'
-                        
-                        news_items.append({
-                            'title': item.get('title', ''),
-                            'source': item.get('source', 'Unknown'),
-                            'published': pub_date,
-                            'link': item.get('url', ''),
-                            'sentiment': sentiment
-                        })
-                    except Exception as e:
-                        continue
-                
-                if news_items:
-                    return pd.DataFrame(news_items).sort_values('published', ascending=False).reset_index(drop=True)
-        except Exception as e:
-            st.warning(f"Alpha Vantage error: {e}. Falling back to Yahoo Finance.")
-    
-    # Fallback to Yahoo Finance
-    try:
-        ticker = yf.Ticker(symbol)
-        news = ticker.news if hasattr(ticker, 'news') else []
-        
-        news_items = []
-        for item in news[:limit]:
-            try:
-                news_items.append({
-                    'title': item.get('title', ''),
-                    'source': item.get('publisher', 'Unknown'),
-                    'published': datetime.fromtimestamp(item.get('providerPublishTime', 0)),
-                    'link': item.get('link', ''),
-                    'sentiment': _simple_sentiment(item.get('title', ''))
-                })
-            except:
-                continue
-        
-        if not news_items:
-            return pd.DataFrame(columns=['title', 'source', 'published', 'link', 'sentiment'])
-        
-        return pd.DataFrame(news_items).sort_values('published', ascending=False).reset_index(drop=True)
-    except:
-        return pd.DataFrame(columns=['title', 'source', 'published', 'link', 'sentiment'])
 
 @st.cache_data(ttl=300)
 def get_stock_price_history(symbol: str, period: str = '1y') -> pd.DataFrame:
@@ -628,6 +456,9 @@ class PortfolioEngine:
         
         # Calculate portfolio metrics
         self._calculate_metrics()
+        
+        # Calculate portfolio beta
+        self.portfolio_beta = self._calculate_portfolio_beta()
     
     def _refresh_quotes(self):
         """Refresh latest quotes for all holdings."""
@@ -662,6 +493,23 @@ class PortfolioEngine:
         
         # Sector allocation
         self.sector_allocation = self.holdings.groupby('Sector')['Weight'].sum().sort_values(ascending=False)
+    
+    def _calculate_portfolio_beta(self) -> float:
+        """Calculate portfolio beta vs benchmark."""
+        try:
+            port_ret, bench_ret = self.compute_returns()
+            
+            if len(port_ret) > 1 and len(bench_ret) > 1:
+                # Calculate beta using covariance method
+                covariance = np.cov(port_ret, bench_ret)[0, 1]
+                bench_variance = np.var(bench_ret)
+                beta = covariance / bench_variance if bench_variance > 0 else 1.0
+                return beta
+            else:
+                return 1.0
+        except Exception as e:
+            st.warning(f"Could not calculate beta: {e}")
+            return 1.0
     
     def compute_portfolio_timeseries(self, start_date: Optional[str] = None) -> pd.Series:
         """Compute historical portfolio value timeseries."""
@@ -725,12 +573,7 @@ class PortfolioEngine:
         information_ratio = excess_returns.mean() / excess_returns.std() * np.sqrt(periods_per_year) if excess_returns.std() > 0 else 0
         
         # Beta
-        if len(port_ret) > 1 and len(bench_ret) > 1:
-            covariance = np.cov(port_ret, bench_ret)[0, 1]
-            bench_variance = np.var(bench_ret)
-            beta = covariance / bench_variance if bench_variance > 0 else 1.0
-        else:
-            beta = 1.0
+        beta = self.portfolio_beta
         
         return {
             'portfolio_return': port_ann_ret,
@@ -891,36 +734,33 @@ def load_portfolio_from_csv(filepath: str) -> pd.DataFrame:
     
     return df[['Symbol', 'Qty', 'AvgCost', 'CostBasis']]
 
-# Default portfolio data
-DEFAULT_PORTFOLIO = """Symbol,Qty,AvgCost
-AAPL,128,235.90
-ADBE,50,346.98
-ADI,100,244.68
-AMGN,40,273.96
-BLK,15,1112.63
-BRK-B,130,491.12
-CARR,300,61.01
-EL,45,87.00
-EPD,600,31.67
-EVRG,220,72.31
-GOOGL,200,249.98
-HON,96,211.67
-KO,109,66.22
-LMT,66,473.18
-MA,86,582.49
-META,112,764.23
-MLM,65,611.92
-MSFT,164,513.57
-MTB,65,196.90
-NKE,63,73.12
-ORLY,480,106.19
-PEP,45,141.32
-PG,82,156.77
-PLD,100,114.34
-PSX,75,131.10
-UNH,48,349.16
-SPY,203,660.02
-XLV,190,132.07
+# Default portfolio data - Updated with your actual holdings
+DEFAULT_PORTFOLIO = """Symbol,Qty,AvgCost,CostBasis
+AAPL,128,28.62,3663.40
+ADBE,50,493.16,24658.00
+ADI,126,191.90,24179.20
+AMGN,108,300.38,32441.31
+BLK,31,1001.37,31042.35
+BRK-B,130,144.71,18811.89
+EL,44,124.09,5459.94
+EPD,844,26.12,22041.65
+EVRG,276,58.75,16216.35
+EXEL,822,40.37,33181.35
+FRCB,65,128.85,8375.25
+GOOGL,200,115.70,23139.10
+HII,119,301.19,35841.36
+HON,96,140.06,13445.97
+JPM,100,296.84,29683.55
+KO,724,63.17,45737.93
+MA,86,159.21,13691.83
+META,112,177.65,19896.96
+MLM,65,193.54,12579.83
+MSFT,164,69.69,11428.42
+NKE,63,128.46,8093.29
+ORLY,480,44.62,21416.00
+PG,82,125.04,10252.92
+PSX,75,118.45,8883.41
+UNH,86,439.06,37759.52
 """
 
 # ============================================================================
@@ -969,7 +809,7 @@ def main():
             portfolio_df = load_portfolio_from_csv(io.StringIO(DEFAULT_PORTFOLIO))
             st.markdown(f"""
             <div style="background: #F1F5F9; padding: 12px; border-radius: 8px; margin: 8px 0;">
-                ℹ️ Using default TKIG portfolio<br>
+                ℹ️ Using TKIG portfolio (Nov 2025)<br>
                 <strong>{len(portfolio_df)}</strong> positions loaded
             </div>
             """, unsafe_allow_html=True)
@@ -981,6 +821,18 @@ def main():
             engine = PortfolioEngine(portfolio_df)
         
         st.markdown("### 📈 Quick Stats")
+        
+        # Beta color coding
+        if engine.portfolio_beta > 1.2:
+            beta_color = '#EF4444'
+            beta_label = 'High Vol'
+        elif engine.portfolio_beta < 0.8:
+            beta_color = '#10B981'
+            beta_label = 'Defensive'
+        else:
+            beta_color = '#0B5FFF'
+            beta_label = 'Market-Like'
+        
         st.markdown(f"""
         <div style="background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%); padding: 16px; border-radius: 8px; margin: 8px 0;">
             <div style="margin-bottom: 12px;">
@@ -993,10 +845,19 @@ def main():
                     {engine.total_pl_pct:+.2f}%
                 </span>
             </div>
-            <div>
+            <div style="margin-bottom: 12px;">
                 <span style="color: #64748B; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Day Change</span><br>
                 <span style="color: {'#10B981' if engine.total_day_pl >= 0 else '#EF4444'}; font-size: 18px; font-weight: 600;">
                     ${engine.total_day_pl:+,.0f}
+                </span>
+            </div>
+            <div style="background: rgba(11, 95, 255, 0.1); padding: 12px; border-radius: 6px; border-left: 4px solid {beta_color};">
+                <span style="color: #64748B; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">⚡ Portfolio Beta</span><br>
+                <span style="color: {beta_color}; font-size: 24px; font-weight: 700;">
+                    {engine.portfolio_beta:.3f}
+                </span><br>
+                <span style="color: {beta_color}; font-size: 12px; font-weight: 600;">
+                    {beta_label}
                 </span>
             </div>
         </div>
@@ -1039,8 +900,8 @@ def main():
         
         st.markdown(f"""
         <div style="background: linear-gradient(135deg, #0B5FFF 0%, #2563EB 100%); padding: 28px; border-radius: 12px; margin-bottom: 24px; color: white;">
-            <h2 style="color: white; margin: 0 0 16px 0; font-size: 24px;">Portfolio Health Dashboard</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">
+            <h2 style="color: white; margin: 0 0 16px 0; font-size: 24px;">📊 Portfolio Health Dashboard</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
                 <div style="background: rgba(255,255,255,0.15); padding: 16px; border-radius: 8px;">
                     <div style="font-size: 11px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Performance</div>
                     <div style="font-size: 22px; font-weight: 700;">{perf_status}</div>
@@ -1060,7 +921,8 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        # KPI Metrics
+        # KPI Metrics Row with Beta
+        st.markdown("### 📊 Key Portfolio Metrics")
         col1, col2, col3, col4, col5 = st.columns(5)
         
         with col1:
@@ -1068,22 +930,99 @@ def main():
                      help="Total market value of all positions")
         
         with col2:
-            st.metric("Cost Basis", f"${engine.total_cost_basis:,.0f}",
-                     help="Total amount invested")
-        
-        with col3:
-            st.metric("Unrealized P/L", f"${engine.total_pl:+,.0f}",
-                     f"{engine.total_pl_pct:+.2f}%",
+            st.metric("Total Return", f"{engine.total_pl_pct:+.2f}%",
+                     f"${engine.total_pl:+,.0f}",
                      help="Total profit/loss")
         
-        with col4:
-            st.metric("Day P/L", f"${engine.total_day_pl:+,.0f}",
+        with col3:
+            st.metric("Day Change", f"${engine.total_day_pl:+,.0f}",
                      f"{engine.total_day_pl_pct:+.2f}%",
                      help="Today's change")
         
-        with col5:
+        with col4:
             st.metric("# Positions", len(engine.holdings),
                      help="Number of individual holdings")
+        
+        with col5:
+            beta_delta = "↑ Higher Vol" if engine.portfolio_beta > 1.0 else "↓ Lower Vol" if engine.portfolio_beta < 1.0 else "≈ Market"
+            beta_delta_type = "normal" if 0.8 <= engine.portfolio_beta <= 1.2 else "inverse" if engine.portfolio_beta < 0.8 else "off"
+            st.metric("**Portfolio Beta**", f"{engine.portfolio_beta:.3f}",
+                     beta_delta,
+                     delta_color=beta_delta_type,
+                     help="Sensitivity to VTI. Beta=1.0 means moves with market. >1.0 = more volatile, <1.0 = less volatile")
+        
+        st.markdown("---")
+        
+        # === PORTFOLIO BETA CARD (PROMINENT) ===
+        st.markdown("## 🎯 Portfolio Beta vs VTI")
+        
+        col_beta_main, col_beta_detail1, col_beta_detail2 = st.columns([2, 1, 1])
+        
+        with col_beta_main:
+            # Determine beta status and color
+            if engine.portfolio_beta > 1.2:
+                beta_status = "⚠️ HIGH VOLATILITY"
+                beta_color = COLORS['danger']
+                beta_bg = "rgba(239, 68, 68, 0.1)"
+                beta_message = f"Your portfolio is **{((engine.portfolio_beta - 1) * 100):.0f}% MORE volatile** than VTI. When VTI moves 1%, your portfolio typically moves {engine.portfolio_beta:.2f}%."
+            elif engine.portfolio_beta < 0.8:
+                beta_status = "🛡️ DEFENSIVE"
+                beta_color = COLORS['success']
+                beta_bg = "rgba(16, 185, 129, 0.1)"
+                beta_message = f"Your portfolio is **{((1 - engine.portfolio_beta) * 100):.0f}% LESS volatile** than VTI. When VTI moves 1%, your portfolio typically moves {engine.portfolio_beta:.2f}%."
+            else:
+                beta_status = "⚖️ MARKET-ALIGNED"
+                beta_color = COLORS['primary']
+                beta_bg = "rgba(11, 95, 255, 0.1)"
+                beta_message = f"Your portfolio moves **in line with the market** (VTI). When VTI moves 1%, your portfolio typically moves {engine.portfolio_beta:.2f}%."
+            
+            st.markdown(f"""
+            <div style="background: {beta_bg}; padding: 24px; border-radius: 12px; border-left: 6px solid {beta_color};">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div>
+                        <span style="font-size: 14px; color: {COLORS['text_muted']}; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Portfolio Beta</span>
+                    </div>
+                    <div>
+                        <span style="font-size: 48px; font-weight: 700; color: {beta_color};">{engine.portfolio_beta:.3f}</span>
+                    </div>
+                </div>
+                <div style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 12px;">
+                    <strong style="color: {beta_color}; font-size: 16px;">{beta_status}</strong>
+                </div>
+                <p style="color: {COLORS['text']}; font-size: 14px; line-height: 1.6; margin: 0;">
+                    {beta_message}
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col_beta_detail1:
+            st.markdown("**📊 Beta Scale**")
+            st.markdown(f"""
+            ```
+            > 1.2   HIGH RISK
+              1.0   MARKET
+            < 0.8   DEFENSIVE
+            
+            You: {engine.portfolio_beta:.3f}
+            ```
+            """)
+            
+            # Visual indicator
+            beta_position = min(max((engine.portfolio_beta - 0.5) / 1.5, 0), 1)
+            st.progress(beta_position)
+            st.caption("Position on risk spectrum")
+        
+        with col_beta_detail2:
+            st.markdown("**🎲 Expected Moves**")
+            st.markdown(f"""
+            **If VTI moves:**
+            - +1% → Portfolio: **{engine.portfolio_beta*1:+.2f}%**
+            - -1% → Portfolio: **{engine.portfolio_beta*-1:+.2f}%**
+            - +5% → Portfolio: **{engine.portfolio_beta*5:+.2f}%**
+            - -5% → Portfolio: **{engine.portfolio_beta*-5:+.2f}%**
+            - +10% → Portfolio: **{engine.portfolio_beta*10:+.2f}%**
+            - -10% → Portfolio: **{engine.portfolio_beta*-10:+.2f}%**
+            """)
         
         st.markdown("---")
         
@@ -1190,84 +1129,6 @@ def main():
         
         st.markdown("---")
         
-        # === DETAILED SECTOR TABLE WITH ANALYSIS ===
-        col_table, col_insights = st.columns([2.5, 1.5])
-        
-        with col_table:
-            st.markdown("### Detailed Sector Breakdown")
-            
-            # Enhanced table with additional metrics
-            display_df = comparison_df.copy()
-            display_df['Status'] = display_df['Active Weight'].apply(
-                lambda x: 'Strong OW' if x > 10 else 'Overweight' if x > 5 else 
-                         'Strong UW' if x < -10 else 'Underweight' if x < -5 else 'Neutral'
-            )
-            
-            # Format for display
-            display_df['Portfolio'] = display_df['Portfolio'].apply(lambda x: f"{x:.1f}%")
-            display_df['SPY'] = display_df['SPY'].apply(lambda x: f"{x:.1f}%")
-            display_df['Active Weight'] = display_df['Active Weight'].apply(lambda x: f"{x:+.1f}%")
-            
-            st.dataframe(
-                display_df[['Sector', 'Portfolio', 'SPY', 'Active Weight', 'Status']],
-                hide_index=True,
-                use_container_width=True,
-                height=400
-            )
-        
-        with col_insights:
-            st.markdown("### Key Sector Insights")
-            
-            # Top bets
-            top_overweight = comparison_df.nlargest(1, 'Active Weight').iloc[0]
-            top_underweight = comparison_df.nsmallest(1, 'Active Weight').iloc[0]
-            
-            st.markdown(f"""
-            <div style="background: rgba(239, 68, 68, 0.1); padding: 14px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid {COLORS['danger']};">
-                <strong style="font-size: 13px;">Largest Overweight</strong><br>
-                <strong style="font-size: 16px; color: {COLORS['danger']};">{top_overweight['Sector']}</strong><br>
-                <span style="font-size: 13px; color: {COLORS['text_muted']};">
-                    {top_overweight['Active Weight']:+.1f}% vs SPY<br>
-                    {top_overweight['Portfolio']:.1f}% of portfolio
-                </span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            st.markdown(f"""
-            <div style="background: rgba(59, 130, 246, 0.1); padding: 14px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid {COLORS['chart_blue']};">
-                <strong style="font-size: 13px;">Largest Underweight</strong><br>
-                <strong style="font-size: 16px; color: {COLORS['chart_blue']};">{top_underweight['Sector']}</strong><br>
-                <span style="font-size: 13px; color: {COLORS['text_muted']};">
-                    {top_underweight['Active Weight']:+.1f}% vs SPY<br>
-                    {top_underweight['Portfolio']:.1f}% of portfolio
-                </span>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Portfolio style analysis
-            if active_share > 60:
-                style = "High Conviction"
-                style_desc = "Significantly differentiated from benchmark"
-            elif active_share > 40:
-                style = "Active Management"
-                style_desc = "Moderate active positioning"
-            elif active_share > 20:
-                style = "Enhanced Index"
-                style_desc = "Slight tilts vs benchmark"
-            else:
-                style = "Index-Like"
-                style_desc = "Closely tracks SPY allocation"
-            
-            st.markdown(f"""
-            <div style="background: linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%); padding: 14px; border-radius: 8px; border: 1px solid {COLORS['border']};">
-                <strong style="font-size: 13px; color: {COLORS['text_muted']};">PORTFOLIO STYLE</strong><br>
-                <strong style="font-size: 18px; color: {COLORS['primary']};">{style}</strong><br>
-                <span style="font-size: 12px; color: {COLORS['text_muted']};">{style_desc}</span>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("---")
-        
         # === POSITION-LEVEL ANALYSIS ===
         st.markdown("## Position Analysis")
         
@@ -1320,11 +1181,11 @@ def main():
             
             # Concentration warning
             if top5_weight > 50:
-                st.warning("High concentration risk in top 5 holdings")
+                st.warning("⚠️ High concentration risk in top 5 holdings")
             elif hhi > 2500:
-                st.warning("Portfolio shows high concentration (HHI > 2500)")
+                st.warning("⚠️ Portfolio shows high concentration (HHI > 2500)")
             else:
-                st.success("Well-diversified portfolio structure")
+                st.success("✅ Well-diversified portfolio structure")
         
         st.markdown("---")
         
@@ -1401,141 +1262,6 @@ def main():
             std_return = engine.holdings['TotalPLPct'].std()
             st.metric("Return Dispersion (StdDev)", f"{std_return:.2f}%",
                      help="Measures consistency of returns across positions")
-        # Executive Summary Banner
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #0B5FFF 0%, #2563EB 100%); padding: 24px; border-radius: 12px; margin-bottom: 24px; color: white;">
-            <h2 style="color: white; margin: 0 0 12px 0;">Executive Summary</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-                <div>
-                    <div style="font-size: 12px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Portfolio Health</div>
-                    <div style="font-size: 20px; font-weight: 700; margin-top: 4px;">
-                        {} {}
-                    </div>
-                </div>
-                <div>
-                    <div style="font-size: 12px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Risk Level</div>
-                    <div style="font-size: 20px; font-weight: 700; margin-top: 4px;">
-                        {}
-                    </div>
-                </div>
-                <div>
-                    <div style="font-size: 12px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Diversification</div>
-                    <div style="font-size: 20px; font-weight: 700; margin-top: 4px;">
-                        {}
-                    </div>
-                </div>
-            </div>
-        </div>
-        """.format(
-            "Excellent ✅" if engine.total_pl_pct > 10 else "Good 👍" if engine.total_pl_pct > 0 else "Review ⚠️",
-            f"(+{engine.total_pl_pct:.1f}%)" if engine.total_pl_pct >= 0 else f"({engine.total_pl_pct:.1f}%)",
-            "Moderate 🟡" if len(engine.holdings) >= 20 else "High 🔴" if len(engine.holdings) < 10 else "Low 🟢",
-            "Excellent ✅" if len(engine.sector_allocation) >= 6 else "Good 👍" if len(engine.sector_allocation) >= 4 else "Poor ⚠️"
-        ), unsafe_allow_html=True)
-        # KPI Metrics
-        col1, col2, col3, col4, col5 = st.columns(5)
-        
-        with col1:
-            st.metric(
-                "Account Value",
-                f"${engine.total_market_value:,.0f}",
-                f"{engine.total_pl_pct:+.2f}%"
-            )
-        
-        with col2:
-            st.metric(
-                "Cost Basis",
-                f"${engine.total_cost_basis:,.0f}"
-            )
-        
-        with col3:
-            st.metric(
-                "Unrealized P/L",
-                f"${engine.total_pl:+,.0f}",
-                f"{engine.total_pl_pct:+.2f}%"
-            )
-        
-        with col4:
-            st.metric(
-                "Day P/L",
-                f"${engine.total_day_pl:+,.0f}",
-                f"{engine.total_day_pl_pct:+.2f}%"
-            )
-        
-        with col5:
-            st.metric(
-                "# Positions",
-                len(engine.holdings)
-            )
-        
-        st.markdown("---")
-        
-        # Charts row
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Top Day Movers")
-            top_movers = engine.holdings.nlargest(5, 'DayChangePct')[['Symbol', 'Name', 'DayChangePct', 'DayPL']]
-            
-            # Color code the dataframe
-            def color_negative_red(val):
-                if isinstance(val, (int, float)):
-                    color = COLORS['success'] if val > 0 else COLORS['danger']
-                    return f'color: {color}'
-                return ''
-            
-            st.dataframe(
-                top_movers.style.applymap(color_negative_red, subset=['DayChangePct', 'DayPL']),
-                hide_index=True,
-                use_container_width=True
-            )
-            
-            st.subheader("Largest Holdings")
-            top_holdings = engine.holdings.nlargest(5, 'MarketValue')[['Symbol', 'MarketValue', 'Weight']]
-            
-            holdings_fig = go.Figure(data=[go.Bar(
-                x=top_holdings['Symbol'],
-                y=top_holdings['Weight'],
-                text=top_holdings['Weight'].apply(lambda x: f"{x:.1f}%"),
-                textposition='auto',
-                marker_color=COLORS['accent1']
-            )])
-            holdings_fig.update_layout(
-                title="Top 5 Holdings by Weight",
-                xaxis_title="",
-                yaxis_title="Portfolio Weight (%)",
-                template=PLOTLY_TEMPLATE,
-                height=300,
-                showlegend=False
-            )
-            st.plotly_chart(holdings_fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("Sector Allocation")
-            sector_fig = go.Figure(data=[go.Pie(
-                labels=engine.sector_allocation.index,
-                values=engine.sector_allocation.values,
-                hole=0.4,
-                marker={'colors': [COLORS['primary'], COLORS['accent1'], COLORS['accent2'], '#8B5CF6', '#EC4899', '#F59E0B']}
-            )])
-            sector_fig.update_layout(template=PLOTLY_TEMPLATE, height=300, showlegend=True)
-            st.plotly_chart(sector_fig, use_container_width=True)
-            
-            st.subheader("Performance Distribution")
-            perf_fig = go.Figure(data=[go.Histogram(
-                x=engine.holdings['TotalPLPct'],
-                nbinsx=20,
-                marker_color=COLORS['primary']
-            )])
-            perf_fig.update_layout(
-                title="Distribution of Position Returns",
-                xaxis_title="Total Return (%)",
-                yaxis_title="Number of Positions",
-                template=PLOTLY_TEMPLATE,
-                height=300,
-                showlegend=False
-            )
-            st.plotly_chart(perf_fig, use_container_width=True)
     
     # TAB 2: POSITIONS
     with tab2:
@@ -1758,46 +1484,9 @@ def main():
         st.markdown("---")
         st.subheader("📖 About the Company")
         st.write(stock_info['description'])
-        
-        # Stock-specific news
-        st.markdown("---")
-        st.subheader(f"📰 Latest News for {selected_symbol}")
-        
-        with st.spinner("Loading news..."):
-            stock_news = get_stock_news(selected_symbol, limit=10)
-        
-        if not stock_news.empty:
-            for _, row in stock_news.iterrows():
-                sentiment_emoji = {
-                    'Positive': '📈',
-                    'Negative': '📉',
-                    'Neutral': '➡️'
-                }.get(row['sentiment'], '➡️')
-                
-                sentiment_color = {
-                    'Positive': COLORS['success'],
-                    'Negative': COLORS['danger'],
-                    'Neutral': COLORS['text_muted']
-                }.get(row['sentiment'], COLORS['text_muted'])
-                
-                with st.container():
-                    st.markdown(f"""
-                    <div style="padding: 12px; background: white; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid {sentiment_color};">
-                        <div style="margin-bottom: 6px;">
-                            <span style="font-size: 14px;">{sentiment_emoji} <strong style="color: {sentiment_color};">{row['sentiment']}</strong></span>
-                        </div>
-                        <h4 style="margin: 8px 0; font-size: 15px; line-height: 1.3;">{row['title']}</h4>
-                        <p style="color: {COLORS['text_muted']}; font-size: 11px; margin: 0;">
-                            <strong>{row['source']}</strong> • {row['published'].strftime('%b %d, %Y %H:%M')} • 
-                            <a href="{row['link']}" target="_blank" style="color: {COLORS['primary']};">Read more →</a>
-                        </p>
-                    </div>
-                    """, unsafe_allow_html=True)
-        else:
-            st.info(f"No recent news available for {selected_symbol}")
     
     # TAB 4: PERFORMANCE
-    with tab3:
+    with tab4:
         st.subheader("Performance vs VTI")
         
         # Check if benchmark data is available
